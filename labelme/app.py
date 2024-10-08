@@ -292,14 +292,6 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         saveAuto.setChecked(self._config["auto_save"])
 
-        saveWithImageData = action(
-            text=self.tr("Save With Image Data"),
-            slot=self.enableSaveImageWithData,
-            tip=self.tr("Save image data in label file"),
-            checkable=True,
-            checked=self._config["store_data"],
-        )
-
         close = action(
             self.tr("&Close"),
             self.closeFile,
@@ -624,7 +616,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Store actions for further handling.
         self.actions = utils.struct(
             saveAuto=saveAuto,
-            saveWithImageData=saveWithImageData,
             changeOutputDir=changeOutputDir,
             save=save,
             saveAs=saveAs,
@@ -736,7 +727,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 saveAs,
                 saveAuto,
                 changeOutputDir,
-                saveWithImageData,
                 close,
                 deleteFile,
                 None,
@@ -1817,7 +1807,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def enableSaveImageWithData(self, enabled):
         self._config["store_data"] = enabled
-        self.actions.saveWithImageData.setChecked(enabled)
 
     def closeEvent(self, event):
         if not self.mayContinue():
