@@ -334,14 +334,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Start drawing rectangles"),
             enabled=False,
         )
-        createCircleMode = action(
-            self.tr("Create Circle"),
-            lambda: self.toggleDrawMode(False, createMode="circle"),
-            shortcuts["create_circle"],
-            "objects",
-            self.tr("Start drawing circles"),
-            enabled=False,
-        )
         createLineMode = action(
             self.tr("Create Line"),
             lambda: self.toggleDrawMode(False, createMode="line"),
@@ -643,7 +635,6 @@ class MainWindow(QtWidgets.QMainWindow):
             createMode=createMode,
             editMode=editMode,
             createRectangleMode=createRectangleMode,
-            createCircleMode=createCircleMode,
             createLineMode=createLineMode,
             createPointMode=createPointMode,
             createLineStripMode=createLineStripMode,
@@ -681,7 +672,6 @@ class MainWindow(QtWidgets.QMainWindow):
             menu=(
                 createMode,
                 createRectangleMode,
-                createCircleMode,
                 createLineMode,
                 createPointMode,
                 createLineStripMode,
@@ -701,7 +691,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 close,
                 createMode,
                 createRectangleMode,
-                createCircleMode,
                 createLineMode,
                 createPointMode,
                 createLineStripMode,
@@ -937,7 +926,6 @@ class MainWindow(QtWidgets.QMainWindow):
         actions = (
             self.actions.createMode,
             self.actions.createRectangleMode,
-            self.actions.createCircleMode,
             self.actions.createLineMode,
             self.actions.createPointMode,
             self.actions.createLineStripMode,
@@ -970,7 +958,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actions.save.setEnabled(False)
         self.actions.createMode.setEnabled(True)
         self.actions.createRectangleMode.setEnabled(True)
-        self.actions.createCircleMode.setEnabled(True)
         self.actions.createLineMode.setEnabled(True)
         self.actions.createPointMode.setEnabled(True)
         self.actions.createLineStripMode.setEnabled(True)
@@ -1107,7 +1094,6 @@ class MainWindow(QtWidgets.QMainWindow):
         draw_actions = {
             "polygon": self.actions.createMode,
             "rectangle": self.actions.createRectangleMode,
-            "circle": self.actions.createCircleMode,
             "point": self.actions.createPointMode,
             "line": self.actions.createLineMode,
             "linestrip": self.actions.createLineStripMode,
