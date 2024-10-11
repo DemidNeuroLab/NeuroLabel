@@ -7,7 +7,7 @@ import labelme.ai
 import labelme.utils
 from labelme import QT5
 from labelme.logger import logger
-from labelme.shape import Shape
+from labelme.shape import Shape,ShapeClass
 
 # TODO(unknown):
 # - [maybe] Find optimal epsilon value.
@@ -78,7 +78,12 @@ class Canvas(QtWidgets.QWidget):
         self.prevMovePoint = QtCore.QPoint()
         self.offsets = QtCore.QPoint(), QtCore.QPoint()
         self.scale = 1.0
-        self.pixmap = QtGui.QPixmap()
+        # Полное изоображение
+        self.full_image = QtGui.QPixmap()
+        # Обрезанное изоображение
+        self.cropped_image = QtGui.QPixmap()
+        # Сдвиг обрезанного изообоажения относительно полного
+        self.image_offsets = (0 , 0)
         self.visible = {}
         self._hideBackround = False
         self.hideBackround = False
@@ -91,6 +96,7 @@ class Canvas(QtWidgets.QWidget):
         self.movingShape = False
         self.snapping = True
         self.hShapeIsSelected = False
+        self.selectedShape : Shape = None
         self._painter = QtGui.QPainter()
         self._cursor = CURSOR_DEFAULT
         # Menus:
@@ -139,12 +145,12 @@ class Canvas(QtWidgets.QWidget):
             logger.debug("Initializing AI model: %r" % model.name)
             self._ai_model = model()
 
-        if self.pixmap is None:
+        if self.cropped_image is None:
             logger.warning("Pixmap is not set yet")
             return
 
         self._ai_model.set_image(
-            image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
+            image=labelme.utils.img_qt_to_arr(self.cropped_image.toImage())
         )
 
     def storeShapes(self):
@@ -401,6 +407,38 @@ class Canvas(QtWidgets.QWidget):
         self.prevhVertex = None
         self.movingShape = True  # Save changes
 
+    def zoomShape(self):
+        """
+            "Переходит" к элементу, ч тобы добавлять элементы
+            соответствующего типа.
+        """
+        if len(self.selectedShapes) == 1:
+            if self.selectedShapes[0].getClass() != ShapeClass.LETTER:
+                self.selectedShape = self.selectedShapes[0]
+                print(self.selectedShape.getClass())
+                self.visible.update((k,False) for k in self.visible)
+                self.visible.update((k,True) for k in self.selectedShape.getAllChildren())
+                self.cropp()
+        else:
+            print("Необходимо выбрать 1 примоугольник.")
+        # TODO: crop image
+        
+    def unZoomShape(self):
+        """
+            "Переходит" к родителю текущего элемента.
+        """
+        if self.selectedShape is not None: 
+            self.selectedShape = self.selectedShape.parent
+            if self.selectedShape is not None:
+                print(self.selectedShape.getClass())
+                self.visible.update((k,False) for k in self.visible)
+                self.visible.update((k,True) for k in self.selectedShape.getAllChildren())
+            else: 
+                print("lox")
+                self.visible.update((k,True) for k in self.visible)
+            self.cropp()
+        # TODO: uncrop image
+
     def mousePressEvent(self, ev):
         if QT5:
             pos = self.transformPos(ev.localPos())
@@ -441,7 +479,8 @@ class Canvas(QtWidgets.QWidget):
                     self.current = Shape(
                         shape_type="points"
                         if self.createMode in ["ai_polygon", "ai_mask"]
-                        else self.createMode
+                        else self.createMode,
+                        parent = self.selectedShape
                     )
                     self.current.addPoint(pos, label=0 if is_shift_pressed else 1)
                     if self.createMode == "point":
@@ -584,9 +623,9 @@ class Canvas(QtWidgets.QWidget):
         self.deSelectShape()
 
     def calculateOffsets(self, point):
-        left = self.pixmap.width() - 1
+        left = self.cropped_image.width() - 1
         right = 0
-        top = self.pixmap.height() - 1
+        top = self.cropped_image.height() - 1
         bottom = 0
         for s in self.selectedShapes:
             rect = s.boundingRect()
@@ -621,8 +660,8 @@ class Canvas(QtWidgets.QWidget):
         o2 = pos + self.offsets[1]
         if self.outOfPixmap(o2):
             pos += QtCore.QPointF(
-                min(0, self.pixmap.width() - o2.x()),
-                min(0, self.pixmap.height() - o2.y()),
+                min(0, self.cropped_image.width() - o2.x()),
+                min(0, self.cropped_image.height() - o2.y()),
             )
         # XXX: The next line tracks the new position of the cursor
         # relative to the shape, but also results in making it
@@ -650,16 +689,18 @@ class Canvas(QtWidgets.QWidget):
             for shape in self.selectedShapes:
                 self.shapes.remove(shape)
                 deleted_shapes.append(shape)
+                shape.delete()
             self.storeShapes()
             self.selectedShapes = []
             self.update()
         return deleted_shapes
 
-    def deleteShape(self, shape):
+    def deleteShape(self, shape:Shape):
         if shape in self.selectedShapes:
             self.selectedShapes.remove(shape)
         if shape in self.shapes:
             self.shapes.remove(shape)
+        shape.delete()
         self.storeShapes()
         self.update()
 
@@ -681,7 +722,7 @@ class Canvas(QtWidgets.QWidget):
             self.boundedMoveShapes(shapes, point + offset)
 
     def paintEvent(self, event):
-        if not self.pixmap:
+        if not self.cropped_image:
             return super(Canvas, self).paintEvent(event)
 
         p = self._painter
@@ -692,8 +733,12 @@ class Canvas(QtWidgets.QWidget):
 
         p.scale(self.scale, self.scale)
         p.translate(self.offsetToCenter())
-
-        p.drawPixmap(0, 0, self.pixmap)
+        
+        # Сдвиг относительно. 
+        # неоходимость вознокает из-за обрезания картинки по "переходу" к элементу 
+        p.translate(-self.image_offsets[0],-self.image_offsets[1])
+     
+        p.drawPixmap(self.image_offsets[0],self.image_offsets[1], self.cropped_image)
 
         p.scale(1 / self.scale, 1 / self.scale)
 
@@ -790,20 +835,22 @@ class Canvas(QtWidgets.QWidget):
 
     def transformPos(self, point):
         """Convert from widget-logical coordinates to painter-logical ones."""
-        return point / self.scale - self.offsetToCenter()
+        return (point / self.scale - self.offsetToCenter() + 
+            QtCore.QPointF(self.image_offsets[0],self.image_offsets[1]))
 
     def offsetToCenter(self):
         s = self.scale
         area = super(Canvas, self).size()
-        w, h = self.pixmap.width() * s, self.pixmap.height() * s
+        w, h = self.cropped_image.width() * s, self.cropped_image.height() * s
         aw, ah = area.width(), area.height()
         x = (aw - w) / (2 * s) if aw > w else 0
         y = (ah - h) / (2 * s) if ah > h else 0
         return QtCore.QPointF(x, y)
 
     def outOfPixmap(self, p):
-        w, h = self.pixmap.width(), self.pixmap.height()
-        return not (0 <= p.x() <= w - 1 and 0 <= p.y() <= h - 1)
+        w, h = self.cropped_image.width(), self.cropped_image.height()
+        x,y = self.image_offsets
+        return not (x <= p.x() <= x + w - 1 and y <= p.y() <= y + h - 1)
 
     def finalise(self):
         assert self.current
@@ -853,7 +900,7 @@ class Canvas(QtWidgets.QWidget):
         # Cycle through each image edge in clockwise fashion,
         # and find the one intersecting the current line segment.
         # http://paulbourke.net/geometry/lineline2d/
-        size = self.pixmap.size()
+        size = self.cropped_image.size()
         points = [
             (0, 0),
             (size.width() - 1, 0),
@@ -910,8 +957,8 @@ class Canvas(QtWidgets.QWidget):
         return self.minimumSizeHint()
 
     def minimumSizeHint(self):
-        if self.pixmap:
-            return self.scale * self.pixmap.size()
+        if self.cropped_image:
+            return self.scale * self.cropped_image.size()
         return super(Canvas, self).minimumSizeHint()
 
     def wheelEvent(self, ev):
@@ -1017,11 +1064,28 @@ class Canvas(QtWidgets.QWidget):
             self.drawingPolygon.emit(False)
         self.update()
 
+    def cropp(self):
+        """
+            Лбразает картинку соответственно текущемы выбранному элементу
+        """
+        if self.selectedShape is None:
+            self.cropped_image = self.full_image.copy()
+            self.image_offsets = (0,0)
+        else:
+            shape = self.selectedShape
+            rect = shape.getCroppBox()
+            self.image_offsets = (rect.x(),rect.y())
+            self.cropped_image.convertFromImage(self.full_image.copy(rect).toImage())
+            
+        self.update()
+        
+        
     def loadPixmap(self, pixmap, clear_shapes=True):
-        self.pixmap = pixmap
+        self.full_image = pixmap
+        self.cropped_image = pixmap.copy()
         if self._ai_model:
             self._ai_model.set_image(
-                image=labelme.utils.img_qt_to_arr(self.pixmap.toImage())
+                image=labelme.utils.img_qt_to_arr(self.cropped_image.toImage())
             )
         if clear_shapes:
             self.shapes = []
@@ -1053,6 +1117,6 @@ class Canvas(QtWidgets.QWidget):
 
     def resetState(self):
         self.restoreCursor()
-        self.pixmap = None
+        self.cropped_image = None
         self.shapesBackups = []
         self.update()
