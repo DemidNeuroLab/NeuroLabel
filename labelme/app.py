@@ -96,8 +96,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self._noSelectionSlot = False
 
-        self._copied_shapes = None
-
         # Main widgets and related state.
         self.labelDialog = LabelDialog(
             parent=self,
@@ -308,54 +306,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Close current file"),
         )
 
-        toggle_keep_prev_mode = action(
-            self.tr("Keep Previous Annotation"),
-            self.toggleKeepPrevMode,
-            shortcuts["toggle_keep_prev_mode"],
-            None,
-            self.tr('Toggle "keep previous annotation" mode'),
-            checkable=True,
-        )
-        toggle_keep_prev_mode.setChecked(self._config["keep_prev"])
-
-        createMode = action(
-            self.tr("Create Polygons"),
-            lambda: self.toggleDrawMode(False, createMode="polygon"),
-            shortcuts["create_polygon"],
-            "objects",
-            self.tr("Start drawing polygons"),
-            enabled=False,
-        )
         createRectangleMode = action(
             self.tr("Create Rectangle"),
             lambda: self.toggleDrawMode(False, createMode="rectangle"),
             shortcuts["create_rectangle"],
             "objects",
             self.tr("Start drawing rectangles"),
-            enabled=False,
-        )
-        createLineMode = action(
-            self.tr("Create Line"),
-            lambda: self.toggleDrawMode(False, createMode="line"),
-            shortcuts["create_line"],
-            "objects",
-            self.tr("Start drawing lines"),
-            enabled=False,
-        )
-        createPointMode = action(
-            self.tr("Create Point"),
-            lambda: self.toggleDrawMode(False, createMode="point"),
-            shortcuts["create_point"],
-            "objects",
-            self.tr("Start drawing points"),
-            enabled=False,
-        )
-        createLineStripMode = action(
-            self.tr("Create LineStrip"),
-            lambda: self.toggleDrawMode(False, createMode="linestrip"),
-            shortcuts["create_linestrip"],
-            "objects",
-            self.tr("Start drawing linestrip. Ctrl+LeftClick ends creation."),
             enabled=False,
         )
         createAiPolygonMode = action(
@@ -373,21 +329,6 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.canvas.createMode == "ai_polygon"
             else None
         )
-        createAiMaskMode = action(
-            self.tr("Create AI-Mask"),
-            lambda: self.toggleDrawMode(False, createMode="ai_mask"),
-            None,
-            "objects",
-            self.tr("Start drawing ai_mask. Ctrl+LeftClick ends creation."),
-            enabled=False,
-        )
-        createAiMaskMode.changed.connect(
-            lambda: self.canvas.initializeAiModel(
-                name=self._selectAiModelComboBox.currentText()
-            )
-            if self.canvas.createMode == "ai_mask"
-            else None
-        )
         editMode = action(
             self.tr("Edit Polygons"),
             self.setEditMode,
@@ -403,30 +344,6 @@ class MainWindow(QtWidgets.QMainWindow):
             shortcuts["delete_polygon"],
             "cancel",
             self.tr("Delete the selected polygons"),
-            enabled=False,
-        )
-        duplicate = action(
-            self.tr("Duplicate Polygons"),
-            self.duplicateSelectedShape,
-            shortcuts["duplicate_polygon"],
-            "copy",
-            self.tr("Create a duplicate of the selected polygons"),
-            enabled=False,
-        )
-        copy = action(
-            self.tr("Copy Polygons"),
-            self.copySelectedShape,
-            shortcuts["copy_polygon"],
-            "copy_clipboard",
-            self.tr("Copy selected polygons to clipboard"),
-            enabled=False,
-        )
-        paste = action(
-            self.tr("Paste Polygons"),
-            self.pasteSelectedShape,
-            shortcuts["paste_polygon"],
-            "paste",
-            self.tr("Paste copied polygons"),
             enabled=False,
         )
         undoLastPoint = action(
@@ -623,23 +540,14 @@ class MainWindow(QtWidgets.QMainWindow):
             open=open_,
             close=close,
             deleteFile=deleteFile,
-            toggleKeepPrevMode=toggle_keep_prev_mode,
             delete=delete,
             edit=edit,
-            duplicate=duplicate,
-            copy=copy,
-            paste=paste,
             undoLastPoint=undoLastPoint,
             undo=undo,
             removePoint=removePoint,
-            createMode=createMode,
             editMode=editMode,
             createRectangleMode=createRectangleMode,
-            createLineMode=createLineMode,
-            createPointMode=createPointMode,
-            createLineStripMode=createLineStripMode,
             createAiPolygonMode=createAiPolygonMode,
-            createAiMaskMode=createAiMaskMode,
             zoom=zoom,
             zoomIn=zoomIn,
             zoomOut=zoomOut,
@@ -656,9 +564,6 @@ class MainWindow(QtWidgets.QMainWindow):
             # XXX: need to add some actions here to activate the shortcut
             editMenu=(
                 edit,
-                duplicate,
-                copy,
-                paste,
                 delete,
                 None,
                 undo,
@@ -666,22 +571,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 None,
                 removePoint,
                 None,
-                toggle_keep_prev_mode,
             ),
             # menu shown at right click
             menu=(
-                createMode,
                 createRectangleMode,
-                createLineMode,
-                createPointMode,
-                createLineStripMode,
                 createAiPolygonMode,
-                createAiMaskMode,
                 editMode,
                 edit,
-                duplicate,
-                copy,
-                paste,
                 delete,
                 undo,
                 undoLastPoint,
@@ -689,13 +585,8 @@ class MainWindow(QtWidgets.QMainWindow):
             ),
             onLoadActive=(
                 close,
-                createMode,
                 createRectangleMode,
-                createLineMode,
-                createPointMode,
-                createLineStripMode,
-                createAiPolygonMode,
-                createAiMaskMode,
+                # createAiPolygonMode,
                 editMode,
                 brightnessContrast,
             ),
@@ -796,7 +687,7 @@ class MainWindow(QtWidgets.QMainWindow):
             lambda: self.canvas.initializeAiModel(
                 name=self._selectAiModelComboBox.currentText()
             )
-            if self.canvas.createMode in ["ai_polygon", "ai_mask"]
+            if self.canvas.createMode in ["ai_polygon"]
             else None
         )
 
@@ -815,9 +706,7 @@ class MainWindow(QtWidgets.QMainWindow):
             save,
             deleteFile,
             None,
-            createMode,
             editMode,
-            duplicate,
             delete,
             undo,
             brightnessContrast,
@@ -924,13 +813,8 @@ class MainWindow(QtWidgets.QMainWindow):
         utils.addActions(self.canvas.menus[0], menu)
         self.menus.edit.clear()
         actions = (
-            self.actions.createMode,
             self.actions.createRectangleMode,
-            self.actions.createLineMode,
-            self.actions.createPointMode,
-            self.actions.createLineStripMode,
             self.actions.createAiPolygonMode,
-            self.actions.createAiMaskMode,
             self.actions.editMode,
         )
         utils.addActions(self.menus.edit, actions + self.actions.editMenu)
@@ -956,13 +840,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def setClean(self):
         self.dirty = False
         self.actions.save.setEnabled(False)
-        self.actions.createMode.setEnabled(True)
         self.actions.createRectangleMode.setEnabled(True)
-        self.actions.createLineMode.setEnabled(True)
-        self.actions.createPointMode.setEnabled(True)
-        self.actions.createLineStripMode.setEnabled(True)
-        self.actions.createAiPolygonMode.setEnabled(True)
-        self.actions.createAiMaskMode.setEnabled(True)
+        self.actions.createAiPolygonMode.setEnabled(False)
         title = __appname__
         if self.filename is not None:
             title = "{} - {}".format(title, self.filename)
@@ -1090,15 +969,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actions.undo.setEnabled(not drawing)
         self.actions.delete.setEnabled(not drawing)
 
-    def toggleDrawMode(self, edit=True, createMode="polygon"):
+    def toggleDrawMode(self, edit=True, createMode="rectangle"):
         draw_actions = {
-            "polygon": self.actions.createMode,
             "rectangle": self.actions.createRectangleMode,
-            "point": self.actions.createPointMode,
-            "line": self.actions.createLineMode,
-            "linestrip": self.actions.createLineStripMode,
             "ai_polygon": self.actions.createAiPolygonMode,
-            "ai_mask": self.actions.createAiMaskMode,
         }
 
         self.canvas.setEditing(edit)
@@ -1291,8 +1165,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._noSelectionSlot = False
         n_selected = len(selected_shapes)
         self.actions.delete.setEnabled(n_selected)
-        self.actions.duplicate.setEnabled(n_selected)
-        self.actions.copy.setEnabled(n_selected)
         self.actions.edit.setEnabled(n_selected)
 
     def addLabel(self, shape):
@@ -1464,20 +1336,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.tr("Error saving label data"), self.tr("<b>%s</b>") % e
             )
             return False
-
-    def duplicateSelectedShape(self):
-        added_shapes = self.canvas.duplicateSelectedShapes()
-        for shape in added_shapes:
-            self.addLabel(shape)
-        self.setDirty()
-
-    def pasteSelectedShape(self):
-        self.loadShapes(self._copied_shapes, replace=False)
-        self.setDirty()
-
-    def copySelectedShape(self):
-        self._copied_shapes = [s.copy() for s in self.canvas.selectedShapes]
-        self.actions.paste.setEnabled(len(self._copied_shapes) > 0)
 
     def labelSelectionChanged(self):
         if self._noSelectionSlot:
@@ -1704,8 +1562,6 @@ class MainWindow(QtWidgets.QMainWindow):
             return False
         self.image = image
         self.filename = filename
-        if self._config["keep_prev"]:
-            prev_shapes = self.canvas.shapes
         self.canvas.loadPixmap(QtGui.QPixmap.fromImage(image))
         flags = {k: False for k in self._config["flags"] or []}
         if self.labelFile:
@@ -1713,11 +1569,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.labelFile.flags is not None:
                 flags.update(self.labelFile.flags)
         self.loadFlags(flags)
-        if self._config["keep_prev"] and self.noShapes():
-            self.loadShapes(prev_shapes, replace=False)
-            self.setDirty()
-        else:
-            self.setClean()
+        self.setClean()
         self.canvas.setEnabled(True)
         # set zoom values
         is_initial_load = not self.zoom_values
@@ -1863,14 +1715,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if filename:
                 self.loadFile(filename)
 
-        self._config["keep_prev"] = keep_prev
-
     def openNextImg(self, _value=False, load=True):
-        keep_prev = self._config["keep_prev"]
-        if QtWidgets.QApplication.keyboardModifiers() == (
-            Qt.ControlModifier | Qt.ShiftModifier
-        ):
-            self._config["keep_prev"] = True
 
         if not self.mayContinue():
             return
@@ -1891,8 +1736,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if self.filename and load:
             self.loadFile(self.filename)
-
-        self._config["keep_prev"] = keep_prev
 
     def openFile(self, _value=False):
         if not self.mayContinue():
@@ -2083,9 +1926,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def currentPath(self):
         return osp.dirname(str(self.filename)) if self.filename else "."
-
-    def toggleKeepPrevMode(self):
-        self._config["keep_prev"] = not self._config["keep_prev"]
 
     def removeSelectedPoint(self):
         self.canvas.removeSelectedPoint()
