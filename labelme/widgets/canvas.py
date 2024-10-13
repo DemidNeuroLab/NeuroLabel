@@ -1,3 +1,5 @@
+from typing import List
+
 import imgviz
 from qtpy import QtCore
 from qtpy import QtGui
@@ -57,8 +59,8 @@ class Canvas(QtWidgets.QWidget):
         super(Canvas, self).__init__(*args, **kwargs)
         # Initialise local state.
         self.mode = self.EDIT
-        self.shapes = []
-        self.shapesBackups = []
+        self.shapes : List[Shape] = []
+        self.shapesBackups : List[Shape] = []
         self.current = None
         self.selectedShapes = []  # save the selected shapes here
         self.selectedShapesCopy = []
@@ -78,7 +80,7 @@ class Canvas(QtWidgets.QWidget):
         self.cropped_image = QtGui.QPixmap()
         # Сдвиг обрезанного изообоажения относительно полного
         self.image_offsets = (0 , 0)
-        self.visible = {}
+        self.visible = {} # TODO: change visible logic. Use shape id
         self._hideBackround = False
         self.hideBackround = False
         self.hShape = None
@@ -144,7 +146,10 @@ class Canvas(QtWidgets.QWidget):
     def storeShapes(self):
         shapesBackup = []
         for shape in self.shapes:
-            shapesBackup.append(shape.copy())
+            if shape.getClass() == ShapeClass.TEXT:
+                list = shape.copyWithChildren()
+                for shap in list:
+                    shapesBackup.append(shap)
         if len(self.shapesBackups) > self.num_backups:
             self.shapesBackups = self.shapesBackups[-self.num_backups - 1 :]
         self.shapesBackups.append(shapesBackup)
@@ -377,13 +382,11 @@ class Canvas(QtWidgets.QWidget):
         if len(self.selectedShapes) == 1:
             if self.selectedShapes[0].getClass() != ShapeClass.LETTER:
                 self.selectedShape = self.selectedShapes[0]
-                print(self.selectedShape.getClass())
                 self.visible.update((k,False) for k in self.visible)
                 self.visible.update((k,True) for k in self.selectedShape.getAllChildren())
                 self.cropp()
         else:
             print("Необходимо выбрать 1 примоугольник.")
-        # TODO: crop image
         
     def unZoomShape(self):
         """
@@ -392,14 +395,11 @@ class Canvas(QtWidgets.QWidget):
         if self.selectedShape is not None: 
             self.selectedShape = self.selectedShape.parent
             if self.selectedShape is not None:
-                print(self.selectedShape.getClass())
                 self.visible.update((k,False) for k in self.visible)
                 self.visible.update((k,True) for k in self.selectedShape.getAllChildren())
             else: 
-                print("lox")
                 self.visible.update((k,True) for k in self.visible)
             self.cropp()
-        # TODO: uncrop image
 
     def mousePressEvent(self, ev):
         if QT5:
@@ -790,15 +790,17 @@ class Canvas(QtWidgets.QWidget):
         # and find the one intersecting the current line segment.
         # http://paulbourke.net/geometry/lineline2d/
         size = self.cropped_image.size()
+        x0, y0 = self.image_offsets
+        
         points = [
-            (0, 0),
-            (size.width() - 1, 0),
-            (size.width() - 1, size.height() - 1),
-            (0, size.height() - 1),
+            (x0, y0),
+            (x0 + size.width() - 1, y0),
+            (x0 + size.width() - 1, y0 + size.height() - 1),
+            (x0, y0 + size.height() - 1),
         ]
         # x1, y1 should be in the pixmap, x2, y2 should be out of the pixmap
-        x1 = min(max(p1.x(), 0), size.width() - 1)
-        y1 = min(max(p1.y(), 0), size.height() - 1)
+        x1 = min(max(p1.x(), x0), x0 + size.width() - 1)
+        y1 = min(max(p1.y(), y0), y0 + size.height() - 1)
         x2, y2 = p2.x(), p2.y()
         d, i, (x, y) = min(self.intersectingEdges((x1, y1), (x2, y2), points))
         x3, y3 = points[i]
@@ -806,9 +808,9 @@ class Canvas(QtWidgets.QWidget):
         if (x, y) == (x1, y1):
             # Handle cases where previous point is on one of the edges.
             if x3 == x4:
-                return QtCore.QPointF(x3, min(max(0, y2), max(y3, y4)))
+                return QtCore.QPointF(x3, min(max(y0, y2), max(y3, y4)))
             else:  # y3 == y4
-                return QtCore.QPointF(min(max(0, x2), max(x3, x4)), y3)
+                return QtCore.QPointF(min(max(x0, x2), max(x3, x4)), y3)
         return QtCore.QPointF(x, y)
 
     def intersectingEdges(self, point1, point2, points):

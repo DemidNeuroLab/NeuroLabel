@@ -447,6 +447,23 @@ class Shape(object):
 
     def copy(self):
         return copy.deepcopy(self)
+    
+    def _copyWithChildren(self, list : List["Shape"], parent : "Shape" = None):
+        shape = Shape(parent=parent)
+        shape.label = self.label
+        shape.points = copy.deepcopy(self.points)
+        shape.shape_type = self.shape_type
+        shape.flags = self.flags
+        shape.description = self.description
+        list.append(shape)
+        for child in self._children:
+            child._copyWithChildren(list,shape)
+    
+    def copyWithChildren(self):
+        allShapes : List[Shape] = []
+        self._copyWithChildren(allShapes, None)
+        return allShapes
+        
 
     def __len__(self):
         return len(self.points)
