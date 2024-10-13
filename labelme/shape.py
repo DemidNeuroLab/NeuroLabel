@@ -18,8 +18,22 @@ class ShapeClass(Enum):
     TEXT = 0
     ROW = 1
     LETTER = 2
-    
 
+class IdController:
+
+    _count : int = 0
+    
+    @classmethod
+    def resetCount(cls):
+        cls._count = 0
+        
+    @classmethod
+    def getId(cls):
+        tmp = cls._count
+        cls._count += 1
+        return tmp
+        
+        
 class Shape(object):
     # Render handles as squares
     P_SQUARE = 0
@@ -60,6 +74,7 @@ class Shape(object):
         mask=None,
         parent : "Shape" = None,
     ):
+        self._id : int = IdController.getId()
         self.label = label
         self.group_id = group_id
         self.points : List[QtCore.QPoint] = []
@@ -191,8 +206,6 @@ class Shape(object):
             self.points.append(point)
             self.point_labels.append(label)
             
-    
-            
     def getCroppBox(self) -> QtCore.QRect:
         """
             Находит обрамляющий прямоугольник для обрезки изоображения
@@ -213,10 +226,7 @@ class Shape(object):
             y[0]= min(point.y(),y[0])
             y[1]= max(point.y(),y[1])
             
-        return QtCore.QRect(int(x[0]),int(y[0]),int(x[1]-x[0]),int(y[1]-y[0]))
-            
-        
-        
+        return QtCore.QRect(int(x[0]),int(y[0]),int(x[1]-x[0]),int(y[1]-y[0]))  
 
     def canAddPoint(self):
         return self.shape_type in ["polygon"]
