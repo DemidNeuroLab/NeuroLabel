@@ -173,15 +173,9 @@ class Shape(object):
     @shape_type.setter
     def shape_type(self, value):
         if value is None:
-            value = "polygon"
+            value = "rectangle"
         if value not in [
-            "polygon",
             "rectangle",
-            "point",
-            "line",
-            "circle",
-            "linestrip",
-            "points",
             "mask",
         ]:
             raise ValueError("Unexpected shape_type: {}".format(value))
@@ -225,7 +219,7 @@ class Shape(object):
         
 
     def canAddPoint(self):
-        return self.shape_type in ["polygon", "linestrip"]
+        return self.shape_type in ["polygon"]
 
     def popPoint(self):
         if self.points:
@@ -247,14 +241,6 @@ class Shape(object):
             return
 
         if self.shape_type == "polygon" and len(self.points) <= 3:
-            logger.warning(
-                "Cannot remove point from: shape_type=%r, len(points)=%d",
-                self.shape_type,
-                len(self.points),
-            )
-            return
-
-        if self.shape_type == "linestrip" and len(self.points) <= 2:
             logger.warning(
                 "Cannot remove point from: shape_type=%r, len(points)=%d",
                 self.shape_type,
@@ -327,29 +313,6 @@ class Shape(object):
                 if self.shape_type == "rectangle":
                     for i in range(len(self.points)):
                         self.drawVertex(vrtx_path, i)
-            elif self.shape_type == "circle":
-                assert len(self.points) in [1, 2]
-                if len(self.points) == 2:
-                    raidus = labelme.utils.distance(
-                        self._scale_point(self.points[0] - self.points[1])
-                    )
-                    line_path.addEllipse(
-                        self._scale_point(self.points[0]), raidus, raidus
-                    )
-                for i in range(len(self.points)):
-                    self.drawVertex(vrtx_path, i)
-            elif self.shape_type == "linestrip":
-                line_path.moveTo(self._scale_point(self.points[0]))
-                for i, p in enumerate(self.points):
-                    line_path.lineTo(self._scale_point(p))
-                    self.drawVertex(vrtx_path, i)
-            elif self.shape_type == "points":
-                assert len(self.points) == len(self.point_labels)
-                for i, point_label in enumerate(self.point_labels):
-                    if point_label == 1:
-                        self.drawVertex(vrtx_path, i)
-                    else:
-                        self.drawVertex(negative_vrtx_path, i)
             else:
                 line_path.moveTo(self._scale_point(self.points[0]))
                 # Uncommenting the following line will draw 2 paths
@@ -442,11 +405,6 @@ class Shape(object):
             path = QtGui.QPainterPath()
             if len(self.points) == 2:
                 path.addRect(QtCore.QRectF(self.points[0], self.points[1]))
-        elif self.shape_type == "circle":
-            path = QtGui.QPainterPath()
-            if len(self.points) == 2:
-                raidus = labelme.utils.distance(self.points[0] - self.points[1])
-                path.addEllipse(self.points[0], raidus, raidus)
         else:
             path = QtGui.QPainterPath(self.points[0])
             for p in self.points[1:]:
