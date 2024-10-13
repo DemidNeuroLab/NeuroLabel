@@ -52,12 +52,12 @@ class MainWindow(QtWidgets.QMainWindow):
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = 0, 1, 2
 
     def __init__(
-            self,
-            config=None,
-            filename=None,
-            output=None,
-            output_file=None,
-            output_dir=None,
+        self,
+        config=None,
+        filename=None,
+        output=None,
+        output_file=None,
+        output_dir=None,
     ):
         if output is not None:
             logger.warning("argument output is deprecated, use output_file instead")
@@ -1343,9 +1343,9 @@ class MainWindow(QtWidgets.QMainWindow):
             label_id += self._config["shift_auto_shape_color"]
             return LABEL_COLORMAP[label_id % len(LABEL_COLORMAP)]
         elif (
-                self._config["shape_color"] == "manual"
-                and self._config["label_colors"]
-                and label in self._config["label_colors"]
+            self._config["shape_color"] == "manual"
+            and self._config["label_colors"]
+            and label in self._config["label_colors"]
         ):
             return self._config["label_colors"][label]
         elif self._config["default_shape_color"]:
@@ -1640,7 +1640,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """Load the specified file, or the last opened file if None."""
         # changing fileListWidget loads file
         if filename in self.imageList and (
-                self.fileListWidget.currentRow() != self.imageList.index(filename)
+            self.fileListWidget.currentRow() != self.imageList.index(filename)
         ):
             self.fileListWidget.setCurrentRow(self.imageList.index(filename))
             self.fileListWidget.repaint()
@@ -1767,9 +1767,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def resizeEvent(self, event):
         if (
-                self.canvas
-                and not self.image.isNull()
-                and self.zoomMode != self.MANUAL_ZOOM
+            self.canvas
+            and not self.image.isNull()
+            and self.zoomMode != self.MANUAL_ZOOM
         ):
             self.adjustScale()
         super(MainWindow, self).resizeEvent(event)
@@ -1842,7 +1842,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def openPrevImg(self, _value=False):
         keep_prev = self._config["keep_prev"]
         if QtWidgets.QApplication.keyboardModifiers() == (
-                Qt.ControlModifier | Qt.ShiftModifier
+            Qt.ControlModifier | Qt.ShiftModifier
         ):
             self._config["keep_prev"] = True
 
@@ -1866,7 +1866,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def openNextImg(self, _value=False, load=True):
         keep_prev = self._config["keep_prev"]
         if QtWidgets.QApplication.keyboardModifiers() == (
-                Qt.ControlModifier | Qt.ShiftModifier
+            Qt.ControlModifier | Qt.ShiftModifier
         ):
             self._config["keep_prev"] = True
 
