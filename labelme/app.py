@@ -1198,6 +1198,7 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             text = "{} ({})".format(shape.label, shape.group_id)
         label_list_item = LabelListWidgetItem(text, shape)
+        label_list_item.setCheckState(Qt.Checked if self.canvas.isVisible(shape) else Qt.Unchecked)
         self.labelList.addItem(label_list_item)
         if self.uniqLabelList.findItemByLabel(shape.label) is None:
             item = self.uniqLabelList.createItemFromLabel(shape.label)
@@ -1258,7 +1259,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self._noSelectionSlot = False
         self.canvas.loadShapes(shapes, replace=replace)
 
-    def _loadLabelsRecursive(self,inputList,shapes,parent : Shape = None):
+    def _loadLabelsRecursive(self,inputList, shapes, parent : Shape = None):
         for shape_dict in inputList:
             label = shape_dict["label"]
             points = shape_dict["points"]
@@ -1517,7 +1518,11 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def togglePolygons(self, value):
         flag = value
+        shapes = self.canvas.selectedShape.getAllChildren()
         for item in self.labelList:
+            if not item.shape() in shapes:
+                continue
+            
             if value is None:
                 flag = item.checkState() == Qt.Unchecked
             item.setCheckState(Qt.Checked if flag else Qt.Unchecked)

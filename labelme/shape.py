@@ -65,6 +65,7 @@ class Shape(object):
 
     def __init__(
         self,
+        id = None,
         label=None,
         line_color=None,
         shape_type=None,
@@ -74,7 +75,10 @@ class Shape(object):
         mask=None,
         parent : "Shape" = None,
     ):
-        self._id : int = IdController.getId()
+        if id is None:
+            self._id : int = IdController.getId()
+        else:
+            self._id = id
         self.label = label
         self.group_id = group_id
         self.points : List[QtCore.QPoint] = []
@@ -145,7 +149,7 @@ class Shape(object):
         for a in self._children:
             a._childrenRecursive(list)
     
-    def getAllChildren(self):
+    def getAllChildren(self) -> List["Shape"] :
         """
             Возвращает всех потомков
         """
@@ -158,6 +162,9 @@ class Shape(object):
             Возвращает прямых потомков
         """
         return self._children
+    
+    def getId(self):
+        return self._id
     
     def getClass(self):
         """
@@ -446,10 +453,15 @@ class Shape(object):
         self._highlightIndex = None
 
     def copy(self):
-        return copy.deepcopy(self)
+        shape = Shape(parent=self.parent, id = self._id)
+        shape.label = self.label
+        shape.points = copy.deepcopy(self.points)
+        shape.shape_type = self.shape_type
+        shape.flags = self.flags
+        shape.description = self.description
     
     def _copyWithChildren(self, list : List["Shape"], parent : "Shape" = None):
-        shape = Shape(parent=parent)
+        shape = Shape(parent=parent,id = self._id)
         shape.label = self.label
         shape.points = copy.deepcopy(self.points)
         shape.shape_type = self.shape_type
