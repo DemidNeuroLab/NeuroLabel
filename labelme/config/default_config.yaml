@@ -120,7 +120,7 @@ shortcuts:
   toggle_keep_prev_mode: Ctrl+P
   remove_selected_point: [Meta+H, Backspace]
 
-  select: [Enter,Ctrl+A]
+  select: Ctrl+A
   deselect: Esc
 
   show_all_polygons: null

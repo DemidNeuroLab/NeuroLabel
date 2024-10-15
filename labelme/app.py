@@ -1973,14 +1973,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def selectShape(self):
         self.canvas.zoomShape()
         self.canvas.update()
-        # self.setClean()
-        # self.setDirty()
         
     def deSelectShape(self):
         self.canvas.unZoomShape()
         self.canvas.update()
-        # self.setClean()
-        # self.setDirty()
     
     def deleteSelectedShape(self):
         yes, no = QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
