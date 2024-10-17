@@ -1442,10 +1442,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.zoomMode = self.FIT_WIDTH if value else self.MANUAL_ZOOM
         self.adjustScale()
 
-    def enableKeepPrevScale(self, enabled):
-        self._config["keep_prev_scale"] = enabled
-        self.actions.keepPrevScale.setChecked(enabled)
-
     def togglePolygons(self, value):
         flag = value
         shapes = self.canvas.selectedShape.getAllChildren()
@@ -1541,7 +1537,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.filename in self.zoom_values:
             self.zoomMode = self.zoom_values[self.filename][0]
             self.setZoom(self.zoom_values[self.filename][1])
-        elif is_initial_load or not self._config["keep_prev_scale"]:
+        else:
             self.adjustScale(initial=True)
         # set scroll values
         for orientation in self.scroll_values:
@@ -1631,11 +1627,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.loadFile(filename)
 
     def openPrevImg(self, _value=False):
-        keep_prev = self._config["keep_prev"]
-        if QtWidgets.QApplication.keyboardModifiers() == (
-                Qt.ControlModifier | Qt.ShiftModifier
-        ):
-            self._config["keep_prev"] = True
 
         if not self.mayContinue():
             return
