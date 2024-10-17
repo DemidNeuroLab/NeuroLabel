@@ -33,7 +33,7 @@ def main():
         "-O",
         "-o",
         help="output file or directory (if it ends with .json it is "
-        "recognized as file, else as directory)",
+             "recognized as file, else as directory)",
     )
     default_config_file = os.path.join(os.path.expanduser("~"), ".labelmerc")
     parser.add_argument(
@@ -75,8 +75,8 @@ def main():
         "--labelflags",
         dest="label_flags",
         help=r"yaml string of label specific flags OR file containing json "
-        r"string of label specific flags (ex. {person-\d+: [male, tall], "
-        r"dog-\d+: [black, brown, white], .*: [occluded]})",  # NOQA
+             r"string of label specific flags (ex. {person-\d+: [male, tall], "
+             r"dog-\d+: [black, brown, white], .*: [occluded]})",  # NOQA
         default=argparse.SUPPRESS,
     )
     parser.add_argument(

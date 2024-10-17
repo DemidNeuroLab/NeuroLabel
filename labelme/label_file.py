@@ -65,7 +65,7 @@ class LabelFile(object):
             f.seek(0)
             return f.read()
 
-    def _loadRecursice(self,data):
+    def _loadRecursice(self, data):
         """
             Метод для рекурсивной подгрузки bbox-ов из словаря.
             
@@ -94,21 +94,21 @@ class LabelFile(object):
             "mask",
         ]
         shapes = [
-                dict(
-                    label=s["label"],
-                    shapes=self._loadRecursice(s["shapes"]),
-                    points=s["points"],
-                    shape_type=s.get("shape_type", "polygon"),
-                    flags=s.get("flags", {}),
-                    description=s.get("description"),
-                    group_id=s.get("group_id"),
-                    mask=utils.img_b64_to_arr(s["mask"]).astype(bool)
-                    if s.get("mask")
-                    else None,
-                    other_data={k: v for k, v in s.items() if k not in shape_keys},
-                )
-                for s in data
-            ]
+            dict(
+                label=s["label"],
+                shapes=self._loadRecursice(s["shapes"]),
+                points=s["points"],
+                shape_type=s.get("shape_type", "polygon"),
+                flags=s.get("flags", {}),
+                description=s.get("description"),
+                group_id=s.get("group_id"),
+                mask=utils.img_b64_to_arr(s["mask"]).astype(bool)
+                if s.get("mask")
+                else None,
+                other_data={k: v for k, v in s.items() if k not in shape_keys},
+            )
+            for s in data
+        ]
         return shapes
 
     def load(self, filename):
@@ -124,10 +124,9 @@ class LabelFile(object):
             with open(filename, "r") as f:
                 data = json.load(f)
 
-            
             imagePath = osp.join(osp.dirname(filename), data["imagePath"])
             imageData = self.load_image_file(imagePath)
-            
+
             flags = data.get("flags") or {}
             imagePath = data["imagePath"]
             self._check_image_height_and_width(
@@ -170,14 +169,14 @@ class LabelFile(object):
         return imageHeight, imageWidth
 
     def save(
-        self,
-        filename,
-        shapes,
-        imagePath,
-        imageHeight,
-        imageWidth,
-        otherData=None,
-        flags=None,
+            self,
+            filename,
+            shapes,
+            imagePath,
+            imageHeight,
+            imageWidth,
+            otherData=None,
+            flags=None,
     ):
         if otherData is None:
             otherData = {}
