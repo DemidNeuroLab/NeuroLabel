@@ -109,12 +109,10 @@ class MainWindow(QtWidgets.QMainWindow):
             show_text_field=self._config["show_label_text_field"],
             completion=self._config["label_completion"],
             fit_to_content=self._config["fit_to_content"],
-            flags=self._config["label_flags"],
         )
 
         self.labelList = LabelListWidget()
         self.lastOpenDir = None
-
 
         self.labelList.itemSelectionChanged.connect(self.labelSelectionChanged)
         self.labelList.itemDoubleClicked.connect(self._edit_label)
@@ -186,14 +184,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(scrollArea)
 
         features = QtWidgets.QDockWidget.DockWidgetFeatures()
-        for dock in ["flag_dock", "label_dock", "shape_dock", "file_dock"]:
+        for dock in ["label_dock", "shape_dock", "file_dock"]:
             if self._config[dock]["closable"]:
                 features = features | QtWidgets.QDockWidget.DockWidgetClosable
             if self._config[dock]["floatable"]:
                 features = features | QtWidgets.QDockWidget.DockWidgetFloatable
             if self._config[dock]["movable"]:
                 features = features | QtWidgets.QDockWidget.DockWidgetMovable
-
+            if self._config[dock]["show"] is False:
+                getattr(self, dock).setVisible(False)
 
         self.addDockWidget(Qt.RightDockWidgetArea, self.label_dock)
         self.addDockWidget(Qt.RightDockWidgetArea, self.shape_dock)
@@ -998,12 +997,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if len(items) == 1:
             edit_text = True
-            edit_flags = True
             edit_group_id = True
             edit_description = True
         else:
             edit_text = all(item.shape().label == shape.label for item in items[1:])
-            edit_flags = all(item.shape().flags == shape.flags for item in items[1:])
             edit_group_id = all(
                 item.shape().group_id == shape.group_id for item in items[1:]
             )
@@ -1014,17 +1011,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if not edit_text:
             self.labelDialog.edit.setDisabled(True)
             self.labelDialog.labelList.setDisabled(True)
-        if not edit_flags:
-            for i in range(self.labelDialog.flagsLayout.count()):
-                self.labelDialog.flagsLayout.itemAt(i).setDisabled(True)
         if not edit_group_id:
             self.labelDialog.edit_group_id.setDisabled(True)
         if not edit_description:
             self.labelDialog.editDescription.setDisabled(True)
 
-        text, flags, group_id, description = self.labelDialog.popUp(
+        text, group_id, description = self.labelDialog.popUp(
             text=shape.label if edit_text else "",
-            flags=shape.flags if edit_flags else None,
             group_id=shape.group_id if edit_group_id else None,
             description=shape.description if edit_description else None,
         )
@@ -1032,16 +1025,12 @@ class MainWindow(QtWidgets.QMainWindow):
         if not edit_text:
             self.labelDialog.edit.setDisabled(False)
             self.labelDialog.labelList.setDisabled(False)
-        if not edit_flags:
-            for i in range(self.labelDialog.flagsLayout.count()):
-                self.labelDialog.flagsLayout.itemAt(i).setDisabled(False)
         if not edit_group_id:
             self.labelDialog.edit_group_id.setDisabled(False)
         if not edit_description:
             self.labelDialog.editDescription.setDisabled(False)
 
         if text is None:
-            assert flags is None
             assert group_id is None
             assert description is None
             return
@@ -1051,12 +1040,11 @@ class MainWindow(QtWidgets.QMainWindow):
             self._update_item(
                 item=item,
                 text=text if edit_text else None,
-                flags=flags if edit_flags else None,
                 group_id=group_id if edit_group_id else None,
                 description=description if edit_description else None,
             )
 
-    def _update_item(self, item, text, flags, group_id, description):
+    def _update_item(self, item, text, group_id, description):
         if not self.validateLabel(text):
             self.errorMessage(
                 self.tr("Invalid label"),
@@ -1070,8 +1058,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if text is not None:
             shape.label = text
-        if flags is not None:
-            shape.flags = flags
         if group_id is not None:
             shape.group_id = group_id
         if description is not None:
@@ -1204,7 +1190,6 @@ class MainWindow(QtWidgets.QMainWindow):
             label = shape_dict["label"]
             points = shape_dict["points"]
             shape_type = shape_dict["shape_type"]
-            flags = shape_dict["flags"]
             description = shape_dict.get("description", "")
             group_id = shape_dict["group_id"]
             other_data = shape_dict["other_data"]
@@ -1227,30 +1212,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self._loadLabelsRecursive(shape_dict["shapes"], shapes, parent=shape)
 
-            default_flags = {}
-            if self._config["label_flags"]:
-                for pattern, keys in self._config["label_flags"].items():
-                    if re.match(pattern, label):
-                        for key in keys:
-                            default_flags[key] = False
-            shape.flags = default_flags
-            shape.flags.update(flags)
             shape.other_data = other_data
-
             shapes.append(shape)
 
     def loadLabels(self, shapes):
         s = []
         self._loadLabelsRecursive(shapes, s)
         self.loadShapes(s)
-
-    def loadFlags(self, flags):
-        self.flag_widget.clear()
-        for key, flag in flags.items():
-            item = QtWidgets.QListWidgetItem(key)
-            item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-            item.setCheckState(Qt.Checked if flag else Qt.Unchecked)
-            self.flag_widget.addItem(item)
 
     def saveLabels(self, filename):
         lf = LabelFile()
@@ -1265,7 +1233,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     group_id=s.group_id,
                     description=s.description,
                     shape_type=s.shape_type,
-                    flags=s.flags,
                     mask=None
                     if s.mask is None
                     else utils.img_arr_to_b64(s.mask.astype(np.uint8)),
@@ -1274,12 +1241,6 @@ class MainWindow(QtWidgets.QMainWindow):
             return data
 
         shapes = [format_shape(item.shape()) for item in self.labelList if item.shape().getClass() == ShapeClass.TEXT]
-        flags = {}
-        for i in range(self.flag_widget.count()):
-            item = self.flag_widget.item(i)
-            key = item.text()
-            flag = item.checkState() == Qt.Checked
-            flags[key] = flag
         try:
             imagePath = osp.relpath(self.imagePath, osp.dirname(filename))
             if osp.dirname(filename) and not osp.exists(osp.dirname(filename)):
@@ -1291,7 +1252,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 imageHeight=self.image.height(),
                 imageWidth=self.image.width(),
                 otherData=self.otherData,
-                flags=flags,
             )
             self.labelFile = lf
             items = self.fileListWidget.findItems(self.imagePath, Qt.MatchExactly)
@@ -1339,12 +1299,12 @@ class MainWindow(QtWidgets.QMainWindow):
         text = None
         if items:
             text = items[0].data(Qt.UserRole)
-        flags = {}
         group_id = None
         description = ""
         if self._config["display_label_popup"] or not text:
             previous_text = self.labelDialog.edit.text()
-            text, flags, group_id, description = self.labelDialog.popUp(text)
+            tmp = self.labelDialog.popUp(text)
+            text, group_id, description = tmp[0], tmp[1], tmp[2]
             if not text:
                 self.labelDialog.edit.setText(previous_text)
 
@@ -1358,7 +1318,7 @@ class MainWindow(QtWidgets.QMainWindow):
             text = ""
         if text:
             self.labelList.clearSelection()
-            shape = self.canvas.setLastLabel(text, flags)
+            shape = self.canvas.setLastLabel(text)
             shape.group_id = group_id
             shape.description = description
             self.addLabel(shape)
@@ -1431,15 +1391,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.adjustScale()
 
     def togglePolygons(self, value):
-        flag = value
         shapes = self.canvas.selectedShape.getAllChildren()
         for item in self.labelList:
             if not item.shape() in shapes:
                 continue
 
-            if value is None:
-                flag = item.checkState() == Qt.Unchecked
-            item.setCheckState(Qt.Checked if flag else Qt.Unchecked)
+            item.setCheckState(Qt.Unchecked)
 
     def loadFile(self, filename=None):
         """Load the specified file, or the last opened file if None."""
@@ -1512,12 +1469,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.image = image
         self.filename = filename
         self.canvas.loadPixmap(QtGui.QPixmap.fromImage(image))
-        flags = {k: False for k in self._config["flags"] or []}
         if self.labelFile:
             self.loadLabels(self.labelFile.shapes)
-            if self.labelFile.flags is not None:
-                flags.update(self.labelFile.flags)
-        self.loadFlags(flags)
         self.setClean()
         self.canvas.setEnabled(True)
         # set zoom values
@@ -1713,6 +1666,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.fileListWidget.repaint()
 
     def saveFile(self, _value=False):
+        print(123)
         assert not self.image.isNull(), "cannot save empty image"
         if self.labelFile:
             # DL20180323 - overwrite when in directory
@@ -1722,12 +1676,16 @@ class MainWindow(QtWidgets.QMainWindow):
             self.close()
         else:
             self._saveFile(self.saveFileDialog())
+        print(234)
 
     def saveFileAs(self, _value=False):
+        print(345)
         assert not self.image.isNull(), "cannot save empty image"
         self._saveFile(self.saveFileDialog())
+        print(456)
 
     def saveFileDialog(self):
+        print(567)
         caption = self.tr("%s - Choose File") % __appname__
         filters = self.tr("Label files (*%s)") % LabelFile.suffix
         if self.output_dir:
@@ -1755,12 +1713,15 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         if isinstance(filename, tuple):
             filename, _ = filename
+        print(678)
         return filename
 
     def _saveFile(self, filename):
+        print(789)
         if filename and self.saveLabels(filename):
             self.addRecentFile(filename)
             self.setClean()
+        print(890)
 
     def closeFile(self, _value=False):
         if not self.mayContinue():
@@ -1931,7 +1892,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 label_file_without_path = osp.basename(label_file)
                 label_file = osp.join(self.output_dir, label_file_without_path)
             item = QtWidgets.QListWidgetItem(file)
-            item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
             if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(label_file):
                 item.setCheckState(Qt.Checked)
             else:
@@ -1967,7 +1927,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 label_file_without_path = osp.basename(label_file)
                 label_file = osp.join(self.output_dir, label_file_without_path)
             item = QtWidgets.QListWidgetItem(filename)
-            item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
             if QtCore.QFile.exists(label_file) and LabelFile.is_label_file(label_file):
                 item.setCheckState(Qt.Checked)
             else:

@@ -89,7 +89,6 @@ class LabelFile(object):
             "group_id",
             "shapes",
             "shape_type",
-            "flags",
             "description",
             "mask",
         ]
@@ -99,7 +98,6 @@ class LabelFile(object):
                 shapes=self._loadRecursice(s["shapes"]),
                 points=s["points"],
                 shape_type=s.get("shape_type", "polygon"),
-                flags=s.get("flags", {}),
                 description=s.get("description"),
                 group_id=s.get("group_id"),
                 mask=utils.img_b64_to_arr(s["mask"]).astype(bool)
@@ -116,7 +114,6 @@ class LabelFile(object):
             "version",
             "imagePath",
             "shapes",  # polygonal annotations
-            "flags",  # image level flags
             "imageHeight",
             "imageWidth",
         ]
@@ -127,7 +124,6 @@ class LabelFile(object):
             imagePath = osp.join(osp.dirname(filename), data["imagePath"])
             imageData = self.load_image_file(imagePath)
 
-            flags = data.get("flags") or {}
             imagePath = data["imagePath"]
             self._check_image_height_and_width(
                 base64.b64encode(imageData).decode("utf-8"),
@@ -144,7 +140,6 @@ class LabelFile(object):
                 otherData[key] = value
 
         # Only replace data after everything is loaded.
-        self.flags = flags
         self.shapes = shapes
         self.imagePath = imagePath
         self.imageData = imageData
@@ -176,15 +171,11 @@ class LabelFile(object):
             imageHeight,
             imageWidth,
             otherData=None,
-            flags=None,
     ):
         if otherData is None:
             otherData = {}
-        if flags is None:
-            flags = {}
         data = dict(
             version=__version__,
-            flags=flags,
             shapes=shapes,
             imagePath=imagePath,
             imageHeight=imageHeight,

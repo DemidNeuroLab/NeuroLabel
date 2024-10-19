@@ -70,7 +70,6 @@ class Shape(object):
             label=None,
             line_color=None,
             shape_type=None,
-            flags=None,
             group_id=None,
             description=None,
             mask=None,
@@ -90,7 +89,6 @@ class Shape(object):
         self._shape_type_raw = None
         self.fill = False
         self.selected = False
-        self.flags = flags
         self.description = description
         self.other_data = {}
         self.mask = mask
@@ -458,7 +456,6 @@ class Shape(object):
         shape.label = self.label
         shape.points = copy.deepcopy(self.points)
         shape.shape_type = self.shape_type
-        shape.flags = self.flags
         shape.description = self.description
 
     def _copyWithChildren(self, list: List["Shape"], parent: "Shape" = None):
@@ -466,7 +463,6 @@ class Shape(object):
         shape.label = self.label
         shape.points = copy.deepcopy(self.points)
         shape.shape_type = self.shape_type
-        shape.flags = self.flags
         shape.description = self.description
         list.append(shape)
         for child in self._children:
