@@ -34,6 +34,8 @@ from labelme.widgets import LabelListWidgetItem
 from labelme.widgets import ToolBar
 from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
+from labelme.widgets import MarkupLevelWidget
+
 
 from labelme import utils
 
@@ -670,6 +672,12 @@ class MainWindow(QtWidgets.QMainWindow):
         ai_prompt_action = QtWidgets.QWidgetAction(self)
         ai_prompt_action.setDefaultWidget(self._ai_prompt_widget)
 
+        self._markup_level_wiget: QtWidgets.QWidget = MarkupLevelWidget(parent=self)
+        markup_level_widget = QtWidgets.QWidgetAction(self)
+        markup_level_widget.setDefaultWidget(self._markup_level_wiget)
+        self.canvas.parentShapeChanged.connect(self.updateMurkupLevelLabel)
+
+
         self.tools = self.toolbar("Tools")
         self.actions.tool = (
             open_,
@@ -693,6 +701,9 @@ class MainWindow(QtWidgets.QMainWindow):
             selectAiModel,
             None,
             ai_prompt_action,
+            None,
+            markup_level_widget,
+            None
         )
 
         self.statusBar().showMessage(str(self.tr("%s started.")) % __appname__)
@@ -1086,6 +1097,12 @@ class MainWindow(QtWidgets.QMainWindow):
             pattern=self.fileSearch.text(),
             load=False,
         )
+        
+    def updateMurkupLevelLabel(self, parentShape: Shape):
+        if parentShape is not None:
+            self._markup_level_wiget.set_markup_level(parentShape.getClass())
+        else:
+            self._markup_level_wiget.set_markup_level(None)
 
     def fileSelectionChanged(self):
         items = self.fileListWidget.selectedItems()
@@ -1401,7 +1418,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.adjustScale()
 
     def togglePolygons(self, value):
-        shapes = self.canvas.selectedShape.getAllChildren()
+        shapes = self.canvas.parentShape.getAllChildren()
+
         for item in self.labelList:
             if not item.shape() in shapes:
                 continue
@@ -1828,11 +1846,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setDirty()
 
     def selectShape(self):
-        self.canvas.zoomShape()
+        self.canvas.zoomParentShape()
         self.canvas.update()
 
     def deSelectShape(self):
-        self.canvas.unZoomShape()
+        self.canvas.unZoomParentShape()
         self.canvas.update()
 
     def deleteSelectedShape(self):
