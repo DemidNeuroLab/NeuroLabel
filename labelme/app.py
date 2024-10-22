@@ -34,6 +34,7 @@ from labelme.widgets import LabelListWidgetItem
 from labelme.widgets import ToolBar
 from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
+from labelme.widgets import ManuscriptTypeWidget
 
 from labelme import utils
 
@@ -700,7 +701,12 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.canvas.createMode in ["ai_polygon"]
             else None
         )
-
+        
+        #choosing the type of manuscript
+        manuscript_type_action = QtWidgets.QWidgetAction(self)
+        self.mtObject = ManuscriptTypeWidget("Устав")
+        manuscript_type_action.setDefaultWidget(self.mtObject)
+        
         self._ai_prompt_widget: QtWidgets.QWidget = AiPromptWidget(
             on_submit=self._submit_ai_prompt, parent=self
         )
@@ -728,6 +734,8 @@ class MainWindow(QtWidgets.QMainWindow):
             zoom,
             None,
             selectAiModel,
+            None,
+            manuscript_type_action,
             None,
             ai_prompt_action,
         )
@@ -944,6 +952,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.imageData = None
         self.labelFile = None
         self.otherData = None
+        self.texttype = "Устав"
         self.canvas.resetState()
 
     def currentItem(self):
@@ -1339,6 +1348,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 imageWidth=self.image.width(),
                 otherData=self.otherData,
                 flags=flags,
+                textType=self.mtObject.GetCurrentValue(),
             )
             self.labelFile = lf
             items = self.fileListWidget.findItems(self.imagePath, Qt.MatchExactly)
@@ -1548,6 +1558,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.labelFile.imagePath,
             )
             self.otherData = self.labelFile.otherData
+            self.texttype = self.labelFile.textType
+            self.mtObject.LoadSetType(self.texttype[self.texttype.find("\\")+1:])
         else:
             self.imageData = LabelFile.load_image_file(filename)
             if self.imageData:

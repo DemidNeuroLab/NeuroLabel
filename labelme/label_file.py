@@ -119,6 +119,7 @@ class LabelFile(object):
             "flags",  # image level flags
             "imageHeight",
             "imageWidth",
+            "textType",
         ]
         try:
             with open(filename, "r") as f:
@@ -127,6 +128,8 @@ class LabelFile(object):
             
             imagePath = osp.join(osp.dirname(filename), data["imagePath"])
             imageData = self.load_image_file(imagePath)
+
+            textType = osp.join(osp.dirname(filename), data["textType"])
             
             flags = data.get("flags") or {}
             imagePath = data["imagePath"]
@@ -151,6 +154,7 @@ class LabelFile(object):
         self.imageData = imageData
         self.filename = filename
         self.otherData = otherData
+        self.textType = textType
 
     @staticmethod
     def _check_image_height_and_width(imageData, imageHeight, imageWidth):
@@ -178,11 +182,14 @@ class LabelFile(object):
         imageWidth,
         otherData=None,
         flags=None,
+        textType=None,
     ):
         if otherData is None:
             otherData = {}
         if flags is None:
             flags = {}
+        if textType is None:
+            textType = "Устав"
         data = dict(
             version=__version__,
             flags=flags,
@@ -190,6 +197,7 @@ class LabelFile(object):
             imagePath=imagePath,
             imageHeight=imageHeight,
             imageWidth=imageWidth,
+            textType=textType,
         )
         for key, value in otherData.items():
             assert key not in data
