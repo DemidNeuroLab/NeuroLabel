@@ -129,7 +129,7 @@ class LabelFile(object):
             imagePath = osp.join(osp.dirname(filename), data["imagePath"])
             imageData = self.load_image_file(imagePath)
 
-            textType = osp.join(osp.dirname(filename), data["textType"])
+            textType = data["textType"].replace("ManuscriptType.","")
             
             flags = data.get("flags") or {}
             imagePath = data["imagePath"]

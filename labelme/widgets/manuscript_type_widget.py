@@ -1,4 +1,10 @@
 from qtpy import QtWidgets
+from enum import Enum
+
+class ManuscriptType(Enum):
+    устав = 0
+    полуустав = 1
+    скоропись = 2
 
 class ManuscriptTypeWidget(QtWidgets.QWidget):
     def __init__(self, value):
@@ -9,7 +15,8 @@ class ManuscriptTypeWidget(QtWidgets.QWidget):
         self.layout().addWidget(self.combo_box)
     
     def GetCurrentValue(self):
-        return self.combo_box.currentText()
+        value = self.combo_box.currentData()
+        return ManuscriptType(value)
     
     def LoadSetType(self, type):
         self.combo_box.setCurrentText(type)
@@ -17,5 +24,6 @@ class ManuscriptTypeWidget(QtWidgets.QWidget):
 class TypeComboBox(QtWidgets.QComboBox):
     def __init__(self, value):
         super().__init__()
-        self.addItems(["Устав", "Полуустав", "Скоропись"])
+        for type in ManuscriptType:
+            self.addItem(type.name, type.value)
         self.setCurrentText(value)

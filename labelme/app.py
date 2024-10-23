@@ -952,7 +952,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.imageData = None
         self.labelFile = None
         self.otherData = None
-        self.texttype = "Устав"
         self.canvas.resetState()
 
     def currentItem(self):
@@ -1348,7 +1347,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 imageWidth=self.image.width(),
                 otherData=self.otherData,
                 flags=flags,
-                textType=self.mtObject.GetCurrentValue(),
+                textType=str(self.mtObject.GetCurrentValue()),
             )
             self.labelFile = lf
             items = self.fileListWidget.findItems(self.imagePath, Qt.MatchExactly)
@@ -1559,7 +1558,7 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             self.otherData = self.labelFile.otherData
             self.texttype = self.labelFile.textType
-            self.mtObject.LoadSetType(self.texttype[self.texttype.find("\\")+1:])
+            self.mtObject.LoadSetType(self.texttype)
         else:
             self.imageData = LabelFile.load_image_file(filename)
             if self.imageData:
