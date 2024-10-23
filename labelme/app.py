@@ -1347,7 +1347,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 imageWidth=self.image.width(),
                 otherData=self.otherData,
                 flags=flags,
-                textType=str(self.mtObject.GetCurrentValue()),
+                textType=self.mtObject.GetCurrentValue(),
             )
             self.labelFile = lf
             items = self.fileListWidget.findItems(self.imagePath, Qt.MatchExactly)

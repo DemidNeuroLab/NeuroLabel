@@ -16,7 +16,7 @@ class ManuscriptTypeWidget(QtWidgets.QWidget):
     
     def GetCurrentValue(self):
         value = self.combo_box.currentData()
-        return ManuscriptType(value)
+        return str(ManuscriptType(value)).replace("ManuscriptType.","")
     
     def LoadSetType(self, type):
         self.combo_box.setCurrentText(type)
