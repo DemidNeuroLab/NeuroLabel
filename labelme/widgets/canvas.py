@@ -33,6 +33,9 @@ class Canvas(QtWidgets.QWidget):
     drawingPolygon = QtCore.Signal(bool)
     vertexSelected = QtCore.Signal(bool)
     mouseMoved = QtCore.Signal(QtCore.QPointF)
+    scrollDragRequest = QtCore.Signal(float, int) # Сигнал для панорамирования
+    parentShapeChanged = QtCore.Signal(object) # Сигнал для панорамирования
+
 
     CREATE, EDIT = 0, 1
 
@@ -92,10 +95,12 @@ class Canvas(QtWidgets.QWidget):
         self.movingShape = False
         self.snapping = True
         self.hShapeIsSelected = False
-        self.selectedShape : Shape = None
-        self._selectedShapeId : int = -1
+        self.parentShape : Shape = None
+        self._parentShapeId : int = -1
         self._painter = QtGui.QPainter()
         self._cursor = CURSOR_DEFAULT
+        
+        self.parentShapeChanged.connect(self.cropp)
         # Menus:
         # 0: right-click without selection and dragging of shapes
         # 1: right-click with selection and dragging of shapes
@@ -179,8 +184,9 @@ class Canvas(QtWidgets.QWidget):
         self.selectedShapes : List[Shape] = []
         for shape in self.shapes:
             shape.selected = False
-            if shape.getId() == self._selectedShapeId:
-                self.selectedShape = shape
+            if shape.getId() == self._parentShapeId:
+                self.parentShape = shape
+                self.parentShapeChanged.emit(self.parentShape)
         self.update()
 
     def enterEvent(self, ev):
@@ -228,6 +234,19 @@ class Canvas(QtWidgets.QWidget):
         return self.hEdge is not None
 
     def mouseMoveEvent(self, ev):
+        """
+        Если зажато колёсико мыши, то запускаем панорамирование.
+        deltaX, deltaY -- нормированное смещение по соответствующей координате
+        """
+        if ev.buttons() & QtCore.Qt.MiddleButton:
+            QtGui.QCursor.setPos(self.mapToGlobal(self._pan_start))
+            deltaX = - (ev.x() - self._pan_start.x()) / self.cropped_image.width() / self.scale 
+            deltaY = - (ev.y() - self._pan_start.y()) / self.cropped_image.height() / self.scale 
+            self.scrollDragRequest.emit(deltaX, QtCore.Qt.Horizontal)
+            self.scrollDragRequest.emit(deltaY, QtCore.Qt.Vertical)
+            # self._pan_start = ev.pos() # Позволяет панорамировать относительно зажатого курсора
+            ev.accept()
+            return
         """Update line with last point and current coordinates."""
         try:
             if QT5:
@@ -377,36 +396,33 @@ class Canvas(QtWidgets.QWidget):
         self.prevhVertex = None
         self.movingShape = True  # Save changes
 
-    def zoomShape(self):
+    def zoomParentShape(self):
         """
-            "Переходит" к элементу, ч тобы добавлять элементы
+            "Переходит" к элементу, чтобы добавлять элементы
             соответствующего типа.
         """
         if len(self.selectedShapes) == 1:
             if self.selectedShapes[0].getClass() != ShapeClass.LETTER:
-                self.selectedShape = self.selectedShapes[0]
-                self._selectedShapeId = self.selectedShape.getId()
+                self.parentShape = self.selectedShapes[0]
+                self._parentShapeId = self.parentShape.getId()
                 self.visible.update((k, False) for k in self.visible)    
-                self.visible.update((shape.getId(), True) for shape in self.selectedShape.getAllChildren())
-                self.cropp()
-        else:
-            print("Необходимо выбрать 1 примоугольник.")
+                self.visible.update((shape.getId(), True) for shape in self.parentShape.getAllChildren())
+                self.parentShapeChanged.emit(self.parentShape)
         
-    def unZoomShape(self):
+    def unZoomParentShape(self):
         """
             "Переходит" к родителю текущего элемента.
         """
-        if self.selectedShape is not None: 
-            self.selectedShape = self.selectedShape.parent
-            
-            if self.selectedShape is not None:
-                self._selectedShapeId = self.selectedShape.getId()
+        if self.parentShape is not None: 
+            self.parentShape = self.parentShape.parent
+            if self.parentShape is not None:
+                self._parentShapeId = self.parentShape.getId()
                 self.visible.update((k, False) for k in self.visible)
-                self.visible.update((shape.getId(), True) for shape in self.selectedShape.getAllChildren())
+                self.visible.update((shape.getId(), True) for shape in self.parentShape.getAllChildren())
             else: 
-                self._selectedShapeId = -1
+                self._parentShapeId = -1
                 self.visible.update((k, True) for k in self.visible)
-            self.cropp()
+            self.parentShapeChanged.emit(self.parentShape)
 
     def mousePressEvent(self, ev):
         if QT5:
@@ -439,7 +455,7 @@ class Canvas(QtWidgets.QWidget):
                         shape_type="points"
                         if self.createMode in ["ai_polygon"]
                         else self.createMode,
-                        parent = self.selectedShape
+                        parent = self.parentShape
                     )
                     self.current.addPoint(pos, label=0 if is_shift_pressed else 1)
                     if (
@@ -481,6 +497,10 @@ class Canvas(QtWidgets.QWidget):
                 self.selectShapePoint(pos, multiple_selection_mode=group_mode)
                 self.repaint()
             self.prevPoint = pos
+        elif ev.button() == QtCore.Qt.MiddleButton:
+            self._pan_start = ev.pos()  # Точка, относительно которой выполняется панорамирование
+            self.overrideCursor(CURSOR_MOVE) # Поменять курсор на сжатую ручку
+            ev.accept()
 
     def mouseReleaseEvent(self, ev):
         if ev.button() == QtCore.Qt.RightButton:
@@ -500,6 +520,8 @@ class Canvas(QtWidgets.QWidget):
                     self.selectionChanged.emit(
                         [x for x in self.selectedShapes if x != self.hShape]
                     )
+        elif ev.button() == QtCore.Qt.MiddleButton:
+            self.overrideCursor(CURSOR_GRAB) # Панорамирование окончено. Возвращение курсора к обычному виду.
 
         if self.movingShape and self.hShape:
             index = self.shapes.index(self.hShape)
@@ -692,11 +714,11 @@ class Canvas(QtWidgets.QWidget):
         p.scale(self.scale, self.scale)
         p.translate(self.offsetToCenter())
         
-        # Сдвиг относительно. 
-        # неоходимость вознокает из-за обрезания картинки по "переходу" к элементу 
+        # Сдвиг относительно изначального изоображения 
+        # неоходимость возникает из-за обрезания картинки по "переходу" к элементу 
         p.translate(-self.image_offsets[0],-self.image_offsets[1])
      
-        p.drawPixmap(self.image_offsets[0],self.image_offsets[1], self.cropped_image)
+        p.drawPixmap(self.image_offsets[0], self.image_offsets[1], self.cropped_image)
 
         p.scale(1 / self.scale, 1 / self.scale)
 
@@ -707,18 +729,19 @@ class Canvas(QtWidgets.QWidget):
             and self.prevMovePoint
             and not self.outOfPixmap(self.prevMovePoint)
         ):
+            inf = 1000000
             p.setPen(QtGui.QColor(0, 0, 0))
             p.drawLine(
-                0,
+                -inf,
                 int(self.prevMovePoint.y() * self.scale),
-                self.width() - 1,
+                inf,
                 int(self.prevMovePoint.y() * self.scale),
             )
             p.drawLine(
                 int(self.prevMovePoint.x() * self.scale),
-                0,
+                -inf,
                 int(self.prevMovePoint.x() * self.scale),
-                self.height() - 1,
+                inf,
             )
 
         Shape.scale = self.scale
@@ -942,10 +965,9 @@ class Canvas(QtWidgets.QWidget):
 
                 self.movingShape = False
 
-    def setLastLabel(self, text, flags):
+    def setLastLabel(self, text):
         assert text
         self.shapes[-1].label = text
-        self.shapes[-1].flags = flags
         self.shapesBackups.pop()
         self.storeShapes()
         return self.shapes[-1]
@@ -970,20 +992,22 @@ class Canvas(QtWidgets.QWidget):
             self.drawingPolygon.emit(False)
         self.update()
 
-    def cropp(self):
+    def cropp(self,parentShape):
         """
             Образает картинку соответственно текущему выбранному элементу
         """
-        if self.selectedShape is None:
-            self.cropped_image = self.full_image.copy()
-            self.image_offsets = (0,0)
-        else:
-            shape = self.selectedShape
-            rect = shape.getCroppBox()
-            self.image_offsets = (rect.x(),rect.y())
-            self.cropped_image.convertFromImage(self.full_image.copy(rect).toImage())
-            
-        self.update()
+        if self.cropped_image:
+            if parentShape is None:
+                self.cropped_image = self.full_image.copy()
+                self.image_offsets = (0,0)
+            else:
+                shape = parentShape
+                rect = shape.getCroppBox()
+                self.image_offsets = (rect.x(),rect.y())
+                self.cropped_image.convertFromImage(self.full_image.copy(rect).toImage())
+            point = QtCore.QPoint(0, 0)
+            self.zoomRequest.emit(0, point)
+            self.update()
         
         
     def loadPixmap(self, pixmap, clear_shapes=True):
@@ -1026,8 +1050,9 @@ class Canvas(QtWidgets.QWidget):
         self.cropped_image = None
         self.shapesBackups = []
         self.shapes = []
-        self.selectedShape = None
-        self._selectedShapeId = -1
+        self.parentShape = None
+        self._parentShapeId = -1
+        self.parentShapeChanged.emit(self.parentShape)
         self.image_offsets = (0, 0)
         IdController.resetCount()
         self.visible = {}        

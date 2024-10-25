@@ -12,6 +12,8 @@ from labelme import __version__
 from labelme import utils
 from labelme.logger import logger
 
+from labelme.widgets.manuscript_type_widget import ManuscriptType
+
 PIL.Image.MAX_IMAGE_PIXELS = None
 
 
@@ -65,7 +67,7 @@ class LabelFile(object):
             f.seek(0)
             return f.read()
 
-    def _loadRecursice(self,data):
+    def _loadRecursice(self, data):
         """
             Метод для рекурсивной подгрузки bbox-ов из словаря.
             
@@ -89,26 +91,24 @@ class LabelFile(object):
             "group_id",
             "shapes",
             "shape_type",
-            "flags",
             "description",
             "mask",
         ]
         shapes = [
-                dict(
-                    label=s["label"],
-                    shapes=self._loadRecursice(s["shapes"]),
-                    points=s["points"],
-                    shape_type=s.get("shape_type", "polygon"),
-                    flags=s.get("flags", {}),
-                    description=s.get("description"),
-                    group_id=s.get("group_id"),
-                    mask=utils.img_b64_to_arr(s["mask"]).astype(bool)
-                    if s.get("mask")
-                    else None,
-                    other_data={k: v for k, v in s.items() if k not in shape_keys},
-                )
-                for s in data
-            ]
+            dict(
+                label=s["label"],
+                shapes=self._loadRecursice(s["shapes"]),
+                points=s["points"],
+                shape_type=s.get("shape_type", "polygon"),
+                description=s.get("description"),
+                group_id=s.get("group_id"),
+                mask=utils.img_b64_to_arr(s["mask"]).astype(bool)
+                if s.get("mask")
+                else None,
+                other_data={k: v for k, v in s.items() if k not in shape_keys},
+            )
+            for s in data
+        ]
         return shapes
 
     def load(self, filename):
@@ -116,19 +116,22 @@ class LabelFile(object):
             "version",
             "imagePath",
             "shapes",  # polygonal annotations
-            "flags",  # image level flags
             "imageHeight",
             "imageWidth",
+            "textType",
         ]
         try:
             with open(filename, "r") as f:
                 data = json.load(f)
 
-            
             imagePath = osp.join(osp.dirname(filename), data["imagePath"])
             imageData = self.load_image_file(imagePath)
+
+            if data["textType"] in ManuscriptType:
+                textType = ManuscriptType(data["textType"])
+            else:
+                textType = ManuscriptType.USTAV
             
-            flags = data.get("flags") or {}
             imagePath = data["imagePath"]
             self._check_image_height_and_width(
                 base64.b64encode(imageData).decode("utf-8"),
@@ -145,12 +148,12 @@ class LabelFile(object):
                 otherData[key] = value
 
         # Only replace data after everything is loaded.
-        self.flags = flags
         self.shapes = shapes
         self.imagePath = imagePath
         self.imageData = imageData
         self.filename = filename
         self.otherData = otherData
+        self.textType = textType
 
     @staticmethod
     def _check_image_height_and_width(imageData, imageHeight, imageWidth):
@@ -177,19 +180,19 @@ class LabelFile(object):
         imageHeight,
         imageWidth,
         otherData=None,
-        flags=None,
+        textType=None,
     ):
         if otherData is None:
             otherData = {}
-        if flags is None:
-            flags = {}
+        if textType is None:
+            textType = ManuscriptType.USTAV
         data = dict(
             version=__version__,
-            flags=flags,
             shapes=shapes,
             imagePath=imagePath,
             imageHeight=imageHeight,
             imageWidth=imageWidth,
+            textType=textType.value,
         )
         for key, value in otherData.items():
             assert key not in data
