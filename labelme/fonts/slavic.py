@@ -1,6 +1,6 @@
 from qtpy.QtGui import QFontDatabase, QFont
 
-import labelme.fonts.fonts_rc
+import labelme.fonts.font_rc
 
 from labelme.logger import logger
 
@@ -20,7 +20,7 @@ class SlavicFont:
     @classmethod    
     def GetFont(cls, size):
         if cls.__font is None:
-            fontId = QFontDatabase.addApplicationFont(":/fonts/Hirmos.ttf")
+            fontId = QFontDatabase.addApplicationFont(":/Hirmos_new.ttf")
             if fontId == 0:
                 fontName = QFontDatabase.applicationFontFamilies(fontId)[0]
                 cls.__font = QFont(fontName, size)
