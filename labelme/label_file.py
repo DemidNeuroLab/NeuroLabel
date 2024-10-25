@@ -12,6 +12,8 @@ from labelme import __version__
 from labelme import utils
 from labelme.logger import logger
 
+from labelme.widgets.manuscript_type_widget import ManuscriptType
+
 PIL.Image.MAX_IMAGE_PIXELS = None
 
 
@@ -129,7 +131,10 @@ class LabelFile(object):
             imagePath = osp.join(osp.dirname(filename), data["imagePath"])
             imageData = self.load_image_file(imagePath)
 
-            textType = data["textType"]
+            if data["textType"] in ManuscriptType:
+                textType = ManuscriptType(data["textType"])
+            else:
+                textType = ManuscriptType.USTAV
             
             flags = data.get("flags") or {}
             imagePath = data["imagePath"]
@@ -189,7 +194,7 @@ class LabelFile(object):
         if flags is None:
             flags = {}
         if textType is None:
-            textType = "Устав"
+            textType = ManuscriptType.USTAV
         data = dict(
             version=__version__,
             flags=flags,
@@ -197,7 +202,7 @@ class LabelFile(object):
             imagePath=imagePath,
             imageHeight=imageHeight,
             imageWidth=imageWidth,
-            textType=textType,
+            textType=textType.value,
         )
         for key, value in otherData.items():
             assert key not in data

@@ -35,6 +35,7 @@ from labelme.widgets import ToolBar
 from labelme.widgets import UniqueLabelQListWidget
 from labelme.widgets import ZoomWidget
 from labelme.widgets import ManuscriptTypeWidget
+from labelme.widgets.manuscript_type_widget import ManuscriptType
 
 from labelme import utils
 
@@ -541,6 +542,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.labelList.setContextMenuPolicy(Qt.CustomContextMenu)
         self.labelList.customContextMenuRequested.connect(self.popLabelListMenu)
 
+        
+        #choosing the type of manuscript
+        manuscript_type_action = QtWidgets.QWidgetAction(self)
+        self.manusctipt_type_wiget = ManuscriptTypeWidget(ManuscriptType.USTAV)
+        self.manusctipt_type_wiget.manuscript_type_changed.connect(self.setDirty)
+        manuscript_type_action.setDefaultWidget(self.manusctipt_type_wiget)
+        
+
         # Store actions for further handling.
         self.actions = utils.struct(
             saveAuto=saveAuto,
@@ -601,10 +610,12 @@ class MainWindow(QtWidgets.QMainWindow):
                 close,
                 createRectangleMode,
                 # createAiPolygonMode,
+                manuscript_type_action,
                 editMode,
             ),
             onShapesPresent=(saveAs, hideAll, showAll, toggleAll),
         )
+        self.toggleActions(False)
 
         self.canvas.vertexSelected.connect(self.actions.removePoint.setEnabled)
 
@@ -702,10 +713,6 @@ class MainWindow(QtWidgets.QMainWindow):
             else None
         )
         
-        #choosing the type of manuscript
-        manuscript_type_action = QtWidgets.QWidgetAction(self)
-        self.mtObject = ManuscriptTypeWidget("Устав")
-        manuscript_type_action.setDefaultWidget(self.mtObject)
         
         self._ai_prompt_widget: QtWidgets.QWidget = AiPromptWidget(
             on_submit=self._submit_ai_prompt, parent=self
@@ -1347,7 +1354,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 imageWidth=self.image.width(),
                 otherData=self.otherData,
                 flags=flags,
-                textType=self.mtObject.GetCurrentValue(),
+                textType=self.manusctipt_type_wiget.GetCurrentValue(),
             )
             self.labelFile = lf
             items = self.fileListWidget.findItems(self.imagePath, Qt.MatchExactly)
@@ -1558,7 +1565,7 @@ class MainWindow(QtWidgets.QMainWindow):
             )
             self.otherData = self.labelFile.otherData
             self.texttype = self.labelFile.textType
-            self.mtObject.LoadSetType(self.texttype)
+            self.manusctipt_type_wiget.LoadSetType(self.texttype)
         else:
             self.imageData = LabelFile.load_image_file(filename)
             if self.imageData:
