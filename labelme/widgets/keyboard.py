@@ -8,17 +8,18 @@ from labelme.fonts.slavic import SlavicFont
 from math import isqrt, ceil
 
 class PushButton(QPushButton):
-    SIZE = 50
+    SIZE = 45
     def __init__(self, text, parent=None):
         super(PushButton, self).__init__(text, parent)
 
         self.setText(text)
-        self.setFixedSize(QSize(PushButton.SIZE - 10, PushButton.SIZE - 10))
+        self.setFixedSize(QSize(PushButton.SIZE, PushButton.SIZE))
 
 """
     Окно экранной клавиатуры для вывода всех возможных символов для разметки
 """
 class Keyboard(QtWidgets.QDialog): 
+    SLOT_SIZE = 60
     def __init__(self, type=None):
         super(Keyboard, self).__init__()
 
@@ -37,11 +38,12 @@ class Keyboard(QtWidgets.QDialog):
 
         possible_width = QApplication.desktop().width() - 40
         possible_height = QApplication.desktop().height() - 100
-        self.setMaximumSize(possible_width, possible_height)
-        grid_width = self.columns * (PushButton.SIZE + 28)
-        grid_height = self.rows * (PushButton.SIZE + 27)
+
+        grid_width = self.columns * (Keyboard.SLOT_SIZE + 23)
+        grid_height = self.rows * (Keyboard.SLOT_SIZE + 23)
+
         if grid_width < possible_width and grid_height < possible_height:
-            self.setFixedSize(grid_width, grid_height)
+            self.setMinimumSize(grid_width, grid_height)
         else:
             self.setMinimumSize(possible_width, possible_height)
 
@@ -74,7 +76,7 @@ class Keyboard(QtWidgets.QDialog):
                     frame.setObjectName("base_frame")
                     frame.setFrameStyle(QFrame.Box | QFrame.Plain)
                     frame.setLineWidth(1)
-                    frame.setFixedSize(60, 60)
+                    frame.setFixedSize(Keyboard.SLOT_SIZE, Keyboard.SLOT_SIZE + 5)
                     frame.setStyleSheet("#base_frame {border: 1px solid rgb(184, 174, 174); border-radius: 10px;}") 
                     frame.setLayout(letter_layout)
 
