@@ -1,7 +1,5 @@
 # flake8: noqa
 
-from .ai_prompt_widget import AiPromptWidget
-
 from .canvas import Canvas
 
 from .color_dialog import ColorDialog
@@ -23,3 +21,7 @@ from .zoom_widget import ZoomWidget
 from .label_letter_dialog import LabelLetterDialog
 
 from .label_line_dialog import LabelLineDialog
+
+from .manuscript_type_widget import ManuscriptTypeWidget
+
+from .MarkupLevel import MarkupLevelWidget

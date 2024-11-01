@@ -13,6 +13,8 @@ from labelme import utils
 from labelme.logger import logger
 from labelme.shape import Shape, ShapeClass
 
+from labelme.widgets.manuscript_type_widget import ManuscriptType
+
 PIL.Image.MAX_IMAGE_PIXELS = None
 
 
@@ -137,14 +139,20 @@ class LabelFile(object):
             "shapes",  # polygonal annotations
             "imageHeight",
             "imageWidth",
+            "textType",
         ]
         try:
             with open(filename, "r") as f:
                 data = json.load(f)
-            
+
             imagePath = osp.join(osp.dirname(filename), data["imagePath"])
             imageData = self.load_image_file(imagePath)
             
+            if data["textType"] in ManuscriptType:
+                textType = ManuscriptType(data["textType"])
+            else:
+                textType = ManuscriptType.USTAV
+                
             imagePath = data["imagePath"]
             self._check_image_height_and_width(
                 base64.b64encode(imageData).decode("utf-8"),
@@ -166,6 +174,7 @@ class LabelFile(object):
         self.imageData = imageData
         self.filename = filename
         self.otherData = otherData
+        self.textType = textType
 
     @staticmethod
     def _check_image_height_and_width(imageData, imageHeight, imageWidth):
@@ -192,14 +201,18 @@ class LabelFile(object):
         imageHeight,
         imageWidth,
         otherData=None,
+        textType=None,
     ):
         if otherData is None:
             otherData = {}
+        if textType is None:
+            textType = ManuscriptType.USTAV
         data = dict(
             shapes=shapes,
             imagePath=imagePath,
             imageHeight=imageHeight,
             imageWidth=imageWidth,
+            textType=textType.value,
         )
         for key, value in otherData.items():
             assert key not in data
