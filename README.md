@@ -10,7 +10,6 @@
 <h2 align="center">
   Гайд для установки
 </h2>
-Разрабы не смогли нормально написать что необходимо для запуска программы и какие зависимости необходимо подгрузить, так что придётся это делать мне.
 
 Для начала нужен питон с официального сайта (у меня работает на 3.11.9).
 
@@ -21,10 +20,14 @@ git clone https://github.com/DemidNeuroLab/NeuroLabel
 cd ./NeuroLabel
 ```
 
-Далее рекомендую создать vevn:
+Далее рекомендую создать виртуальное окружение:
 ```
 python -m venv venv
+```
 
+Далее необходимо активировать это виртуальное окружение:
+
+```
 .\venv\Scripts\activate
 ```
 
@@ -35,31 +38,46 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 ```
 
-Для запуска приложения нужно запустить файл start.py.
+После установки зависимостей для запуска приложения нужно запустить файл start.py.
 ```
 python start.py
 ```
 
 <h2 align="center">
-  Для создания exe-файла
+  Для создания исполняемого exe-файла
 </h2>
 Пишем команду:
 
 ```
 pyinstaller labelme.spec
 ```
+
 <h2 align="center">
-  Для компиляции ресурсов файлов помощи
+  Для компиляции ресурсных файлов
 </h2>
-После исправления файлов с помощью их надо перекомпиллировать:
-
-Открываем терминал, выполняем команды.
+Необходимо собрать ресурсы в формате qrc. Выполняем команды:
 
 ```
-cd .\labelme\widgets\helper_text\
-pyrcc5 -o help.py help.qrc
+cd \path\to\dir
+pyrcc5 -o "filename".py "filename".qrc
 ```
-# Далее ридми от разрабов:
+
+Далее необходимо импортировать в коде сгенерированный `.py` файл с ресурсами. Далее его можно прочесть, к примеру так:
+
+```
+def read_file(path):
+  f = QtCore.QFile(path)
+  if f.open(QtCore.QIODevice.ReadOnly | QtCore.QFile.Text):
+    text = QtCore.QTextStream(f)
+    text.setCodec("UTF-8")
+  result = ""
+  while not text.atEnd():
+    result += text.readLine()
+  f.close()
+  return result
+```
+
+# Далее ReadMe от оригинальных разработчиков:
 
 
 <div align="center">

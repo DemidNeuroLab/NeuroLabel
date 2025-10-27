@@ -107,8 +107,8 @@ class Shape(object):
             self.parent = parent
             if parent.getClass() == ShapeClass.TEXT:
                 self._shape_class = ShapeClass.ROW
-            elif parent.getClass() == ShapeClass.ROW:
-                self._shape_class = ShapeClass.LETTER
+            # elif parent.getClass() == ShapeClass.ROW:
+                # self._shape_class = ShapeClass.LETTER
             else:
                 raise Exception(f"Shape wrong parent shape_class: {parent.getClass()}")
             parent._addChild(self)
@@ -138,7 +138,7 @@ class Shape(object):
             self.parent._deleteChild(self)
 
     def _addChild(self, shape: "Shape"):
-        if self._shape_class == ShapeClass.LETTER:
+        if self._shape_class in [ShapeClass.LETTER, ShapeClass.ROW]:
             Exception("Letter can't be parent.")
         self._children.append(shape)
 
@@ -244,6 +244,7 @@ class Shape(object):
         if value is None:
             value = "rectangle"
         if value not in [
+            "polygon",
             "rectangle",
             "mask",
         ]:
@@ -260,9 +261,9 @@ class Shape(object):
             self.points.append(point)
             self.point_labels.append(label)
 
-    def getCroppBox(self) -> QtCore.QRect:
+    def getCropBox(self) -> QtCore.QRect:
         """
-            Находит обрамляющий прямоугольник для обрезки изоображения
+            Находит обрамляющий прямоугольник для обрезки изображения
             
             -------------
             Возвращает
@@ -465,6 +466,7 @@ class Shape(object):
             path = QtGui.QPainterPath(self.points[0])
             for p in self.points[1:]:
                 path.lineTo(p)
+            path.lineTo(self.points[0])
         return path
 
     def boundingRect(self):

@@ -294,12 +294,20 @@ class MainWindow(QtWidgets.QMainWindow):
             self.tr("Закрыть текущее изображение"),
         )
 
+        createMode = action(
+            self.tr("Создать полигон"),
+            lambda: self.toggleDrawMode(False, createMode="polygon"),
+            shortcuts["create_polygon"],
+            "objects",
+            self.tr("Создать прямоугольник для обрамления области текста/строки"),
+            enabled=False,
+        )
         createRectangleMode = action(
             self.tr("Создать прямоугольник"),
             lambda: self.toggleDrawMode(False, createMode="rectangle"),
             shortcuts["create_rectangle"],
             "objects",
-            self.tr("Создать прямоугольник для обрамления области текста/строки/символа"),
+            self.tr("Создать прямоугольник для обрамления области текста/строки"),
             enabled=False,
         )
         createAiPolygonMode = action(
@@ -333,7 +341,7 @@ class MainWindow(QtWidgets.QMainWindow):
             shortcuts["undo_last_point"],
             "undo",
             self.tr("Изменить последнюю точку"),
-            enabled=False,
+            enabled=True,
         )
         removePoint = action(
             text=self.tr("Удалить точку из прямоугольника"),
@@ -517,6 +525,7 @@ class MainWindow(QtWidgets.QMainWindow):
             selectShape=selectShape,
             deSelectShape=deSelectShape,
             editMode=editMode,
+            createMode=createMode,
             createRectangleMode=createRectangleMode,
             createAiPolygonMode=createAiPolygonMode,
             zoom=zoom,
@@ -546,6 +555,7 @@ class MainWindow(QtWidgets.QMainWindow):
             ),
             # menu shown at right click
             menu=(
+                createMode,
                 createRectangleMode,
                 createAiPolygonMode,
                 editMode,
@@ -557,6 +567,7 @@ class MainWindow(QtWidgets.QMainWindow):
             ),
             onLoadActive=(
                 close,
+                createMode,
                 createRectangleMode,
                 # createAiPolygonMode,
                 manuscript_type_action,
@@ -645,6 +656,7 @@ class MainWindow(QtWidgets.QMainWindow):
             save,
             deleteFile,
             None,
+            createMode,
             createRectangleMode,
             editMode,
             delete,
@@ -902,6 +914,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def toggleDrawMode(self, edit=True, createMode="rectangle"):
         draw_actions = {
+            "polygon": self.actions.createMode,
             "rectangle": self.actions.createRectangleMode,
             "ai_polygon": self.actions.createAiPolygonMode,
         }
@@ -915,6 +928,7 @@ class MainWindow(QtWidgets.QMainWindow):
             for draw_mode, draw_action in draw_actions.items():
                 draw_action.setEnabled(createMode != draw_mode)
         self.actions.editMode.setEnabled(not edit)
+        self.actions.undoLastPoint.setEnabled(not edit)
 
     def setEditMode(self):
         self.toggleDrawMode(True)
@@ -1274,9 +1288,9 @@ class MainWindow(QtWidgets.QMainWindow):
         if state == ShapeClass.ROW:
             labelLineDialog = LabelLineDialog(helper=self.helper)
             text = labelLineDialog.popUp()
-        elif state == ShapeClass.LETTER:
-            labelLetterDialog = LabelLetterDialog(helper=self.helper)
-            text = labelLetterDialog.popUp()
+        # elif state == ShapeClass.LETTER:
+            # labelLetterDialog = LabelLetterDialog(helper=self.helper)
+            # text = labelLetterDialog.popUp()
         else:
             text = Literal("")
 

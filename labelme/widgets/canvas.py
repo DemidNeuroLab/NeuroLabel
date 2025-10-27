@@ -100,7 +100,7 @@ class Canvas(QtWidgets.QWidget):
         self._painter = QtGui.QPainter()
         self._cursor = CURSOR_DEFAULT
         
-        self.parentShapeChanged.connect(self.cropp)
+        self.parentShapeChanged.connect(self.crop)
         # Menus:
         # 0: right-click without selection and dragging of shapes
         # 1: right-click with selection and dragging of shapes
@@ -124,6 +124,7 @@ class Canvas(QtWidgets.QWidget):
     @createMode.setter
     def createMode(self, value):
         if value not in [
+            "polygon",
             "rectangle",
             "ai_polygon",
         ]:
@@ -279,7 +280,11 @@ class Canvas(QtWidgets.QWidget):
                 # Don't allow the user to draw outside the pixmap.
                 # Project the point to the pixmap's edges.
                 pos = self.intersectionPoint(self.current[-1], pos)
-            if self.createMode in ["ai_polygon"]:
+            
+            if self.createMode in ["polygon"]:
+                self.line.points = [self.current[-1], pos]
+                self.line.point_labels = [1, 1]
+            elif self.createMode in ["ai_polygon"]:
                 self.line.points = [self.current.points[-1], pos]
                 self.line.point_labels = [
                     self.current.point_labels[-1],
@@ -391,7 +396,7 @@ class Canvas(QtWidgets.QWidget):
             соответствующего типа.
         """
         if len(self.selectedShapes) == 1:
-            if self.selectedShapes[0].getClass() != ShapeClass.LETTER:
+            if self.selectedShapes[0].getClass() not in [ShapeClass.LETTER, ShapeClass.ROW]:
                 self.parentShape = self.selectedShapes[0]
                 self._parentShapeId = self.parentShape.getId()
                 self.visible.update((k, False) for k in self.visible)    
@@ -425,7 +430,12 @@ class Canvas(QtWidgets.QWidget):
             if self.drawing():
                 if self.current:
                     # Add point to existing shape.
-                    if self.createMode in ["rectangle"]:
+                    if self.createMode in ["polygon"]:
+                        self.current.addPoint(self.line[1])
+                        self.line[0] = self.current[-1]
+                        if self.current.isClosed():
+                            self.finalise()
+                    elif self.createMode in ["rectangle"]:
                         assert len(self.current.points) == 1
                         self.current.points = self.line.points
                         self.finalise()
@@ -557,7 +567,8 @@ class Canvas(QtWidgets.QWidget):
         if self.double_click != "close":
             return
 
-        if self.createMode in ["ai_polygon"]:
+        if ( self.createMode == "polygon" and self.canCloseShape() 
+            or self.createMode in ["ai_polygon"] ):
             self.finalise()
 
     def selectShapes(self, shapes):
@@ -587,8 +598,9 @@ class Canvas(QtWidgets.QWidget):
         self.deSelectShape()
 
     def calculateOffsets(self, point):
+        """ Вычисление смещения координат, когда выбрана конкретная метка. """
         x0, y0 = self.image_offsets
-        
+        # Вычисление границ
         left = x0 + self.cropped_image.width() - 1
         right = x0
         top = y0 + self.cropped_image.height() - 1
@@ -611,6 +623,7 @@ class Canvas(QtWidgets.QWidget):
         self.offsets = QtCore.QPointF(x1, y1), QtCore.QPointF(x2, y2)
 
     def _moveVertexOutside(self,point: QtCore.QPointF, pos: QtCore.QPointF, bounds):
+        """ Ограничение перемещения точки внутри прямоугольника bounds (xmin, ymin, xmax, ymax). """
         x, y = point.x(), point.y()
         nx,ny = x, y
         
@@ -627,6 +640,7 @@ class Canvas(QtWidgets.QWidget):
     
     
     def _moveVertexInside(self, pos: QtCore.QPointF, bounds):
+        """ Ограничение перемещения точки снаружи прямоугольника bounds (xmin, ymin, xmax, ymax). """
         x, y = pos.x(), pos.y()
         nx,ny = x, y
         
@@ -642,6 +656,7 @@ class Canvas(QtWidgets.QWidget):
         return QtCore.QPointF(nx, ny)
 
     def boundedMoveVertex(self, pos):
+        """ Метод, ограничивающий изменение размеров фигур. """
         index, shape = self.hVertex, self.hShape
         point = shape[index]
         if self.outOfPixmap(pos):
@@ -1021,7 +1036,9 @@ class Canvas(QtWidgets.QWidget):
         self.current = self.shapes.pop()
         self.current.setOpen()
         self.current.restoreShapeRaw()
-        if self.createMode in ["rectangle"]:
+        if self.createMode in ["polygon"]:
+            self.line.points = [self.current[-1], self.current[0]]
+        elif self.createMode in ["rectangle"]:
             self.current.points = self.current.points[0:1]
         self.drawingPolygon.emit(True)
 
@@ -1036,7 +1053,7 @@ class Canvas(QtWidgets.QWidget):
             self.drawingPolygon.emit(False)
         self.update()
 
-    def cropp(self,parentShape):
+    def crop(self, parentShape: Shape):
         """
             Образает картинку соответственно текущему выбранному элементу
         """
@@ -1046,7 +1063,7 @@ class Canvas(QtWidgets.QWidget):
                 self.image_offsets = (0,0)
             else:
                 shape = parentShape
-                rect = shape.getCroppBox()
+                rect = shape.getCropBox()
                 self.image_offsets = (rect.x(),rect.y())
                 self.cropped_image.convertFromImage(self.full_image.copy(rect).toImage())
             point = QtCore.QPoint(0, 0)
