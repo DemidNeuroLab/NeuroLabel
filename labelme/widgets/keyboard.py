@@ -88,12 +88,7 @@ class Keyboard(QtWidgets.QDialog):
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         
-        if type == 'letter':
-            self.symbol_list = list(LETTER_DESCRIPTIONS['letters'].keys()) + list(LETTER_DESCRIPTIONS["titla"].keys())
-        elif type == 'diacritical':
-            self.symbol_list = list(LETTER_DESCRIPTIONS['diacritical_signs'].keys())
-        else:
-            self.symbol_list = list(LETTER_DESCRIPTIONS['letters'].keys()) + list(LETTER_DESCRIPTIONS['diacritical_signs'].keys()) + list(LETTER_DESCRIPTIONS["titla"].keys())
+        self.symbol_list = SlavicFont.ALL
 
         screen_rect = QApplication.desktop().availableGeometry()
         max_window_width = screen_rect.width() - self.SCREEN_MARGIN_WIDTH

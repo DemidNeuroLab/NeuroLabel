@@ -11,6 +11,7 @@ import labelme.utils
 from labelme.widgets.keyboard import Keyboard
 from labelme.fonts.slavic import SlavicFont
 from labelme.widgets.label_letter_dialog import Literal
+from labelme.fonts.titla_relation import TITLA_RELATIONS
 
 QT5 = QT_VERSION[0] == "5"
 
@@ -50,7 +51,8 @@ class LabelLineDialog(QtWidgets.QDialog):
 
         self.text_view = QTextEdit()
         if old_text is not None:
-            self.text_view.setText(old_text)
+            displayed_text = self.convert_titla_to_displayable_text(old_text)
+            self.text_view.setText(displayed_text)
         self.text_view.setFont(SlavicFont.GetFont(22))
         self.text_view.setReadOnly(True)
         self.text_view.setWordWrapMode(QTextOption.NoWrap)
@@ -92,23 +94,38 @@ class LabelLineDialog(QtWidgets.QDialog):
 
     def validate_input(self):
         text = self.edit.text()
-        symbol_list = SlavicFont.LETTERS + SlavicFont.DIACRITICAL_SIGNS + SlavicFont.TITLA
         if text == "":
             self.recognised_line = Literal(text)
             self.close()
             return
-        if not all(letter in symbol_list for letter in text):
+        if not all(letter in SlavicFont.ALL for letter in text):
             self.getMessageBox("Введён некорректный символ!")
-        elif text[0] in SlavicFont.DIACRITICAL_SIGNS + SlavicFont.TITLA:
-            self.getMessageBox("Диакритический знак или титло не может быть в начале строки!") 
+        elif text[0] in SlavicFont.DIACRITICAL_SIGNS:
+            self.getMessageBox("Диакритический знак не может быть в начале строки!") 
+        elif text[-1] == "=":
+            self.getMessageBox("Титло не может быть в конце строки без буквы!") 
         else:
-            all_upper = SlavicFont.DIACRITICAL_SIGNS + SlavicFont.TITLA
             for i in range(len(text) - 1):
-                if text[i] in all_upper and text[i + 1] in all_upper:
+                if text[i] in SlavicFont.DIACRITICAL_SIGNS and text[i + 1] in SlavicFont.DIACRITICAL_SIGNS:
                     self.getMessageBox("В строке не могут подряд идти 2 диакритических знака!")
+                    return
+                if text[i] == "=" and text[i+1] not in SlavicFont.LETTERS:
+                    self.getMessageBox("После титла обязана идти буква!")
                     return
             self.recognised_line = Literal(text)
             self.close()
+
+    def convert_titla_to_displayable_text(self, text):
+        rez = ""
+        i = 0
+        while i != len(text) - 1:
+            if text[i] == "=":
+                rez = rez + TITLA_RELATIONS[f"{text[i]}{text[i + 1]}"]
+                i = i + 2
+            else:
+                rez = rez + text[i]
+                i = i + 1
+        return rez
 
     def getMessageBox(self, text):
         messageBox = QtWidgets.QMessageBox(
@@ -121,12 +138,13 @@ class LabelLineDialog(QtWidgets.QDialog):
         
     def changeLabel(self):
         text = self.edit.text()
-        symbol_list = SlavicFont.LETTERS + SlavicFont.DIACRITICAL_SIGNS + SlavicFont.TITLA
         
-        if not all(letter in symbol_list for letter in text):
+        if not all(letter in SlavicFont.ALL for letter in text):
             self.text_view.setText("")
+            self.getMessageBox("Введён некорректный символ! Отображение строки отключено, пока ввод не будет исправен!")
         else:
-            self.text_view.setText(text)
+            displayed_text = self.convert_titla_to_displayable_text(text)
+            self.text_view.setText(displayed_text)
         
     def cursor_to_right(self):
         cursor = self.text_view.textCursor()     
