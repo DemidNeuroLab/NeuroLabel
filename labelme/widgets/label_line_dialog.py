@@ -6,6 +6,7 @@ from PyQt5.QtCore import Qt, QSize, QEvent
 from PyQt5.QtGui import * 
 from PyQt5.QtWidgets import *
 from labelme.widgets.helper import Helper
+import re
 
 import labelme.utils
 from labelme.widgets.keyboard import Keyboard
@@ -116,16 +117,27 @@ class LabelLineDialog(QtWidgets.QDialog):
             self.close()
 
     def convert_titla_to_displayable_text(self, text):
-        rez = ""
-        i = 0
-        while i != len(text) - 1:
-            if text[i] == "=":
-                rez = rez + TITLA_RELATIONS[f"{text[i]}{text[i + 1]}"]
-                i = i + 2
+        pattern = re.compile(r'=(\w)')
+
+        def replacer(match):            
+            char = match.group(1)
+            full_match = match.group(0)
+
+            # 1. Проверяем, есть ли буква в списке SlavicFont.ALL
+            if char in SlavicFont.ALL:
+                # 2. Формируем ключ для словаря, например "=а"
+                key = full_match 
+                
+                # 3. Если ключ есть в TITLA_RELATIONS, возвращаем значение.
+                # Если ключа нет (хотя буква есть в ALL), возвращаем исходное сочетание, 
+                # чтобы избежать ошибки KeyError.
+                return TITLA_RELATIONS.get(key, full_match)
             else:
-                rez = rez + text[i]
-                i = i + 1
-        return rez
+                # Буква не из списка SlavicFont.ALL, возвращаем исходное сочетание.
+                return full_match
+
+        # Применяем функцию replacer ко всем найденным совпадениям в строке.
+        return pattern.sub(replacer, text)
 
     def getMessageBox(self, text):
         messageBox = QtWidgets.QMessageBox(
@@ -157,6 +169,8 @@ class LabelLineDialog(QtWidgets.QDialog):
         self.workWithKeyboard = False
         if letter is not None:
             self.edit.setText(self.edit.text() + letter)
+            # self.text_view.setText(self.edit.text())
+            self.changeLabel()
 
     def event(self, event):
         if not self.workWithKeyboard and event.type() == QEvent.EnterWhatsThisMode:
