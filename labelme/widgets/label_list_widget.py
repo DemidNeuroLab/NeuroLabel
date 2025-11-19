@@ -58,10 +58,25 @@ class HTMLDelegate(QtWidgets.QStyledItemDelegate):
         painter.restore()
 
     def sizeHint(self, option, index):
+        # Получаем текст текущего элемента
+        item_text = index.data(QtCore.Qt.DisplayRole)
+        
+        # ВРЕМЕННО устанавливаем текст в QТextDocument для расчета
+        # Если этого не сделать, doc будет содержать текст предыдущего элемента
+        self.doc.setHtml(item_text)
+
+        # 1. Для Скроллера (No Wrap)
+        # Возвращаем идеальную ширину (ширина одной строки без переноса).
+        width = int(self.doc.idealWidth())
+
+        # Для высоты нам нужно, чтобы она была высотой одной строки (если NoWrap)
+        # Если вы используете HTML, убедитесь, что ваш HTML не принуждает к переносу!
+        height = int(self.doc.size().height())
+        
         thefuckyourshitup_constant = 4
         return QtCore.QSize(
-            int(self.doc.idealWidth()),
-            int(self.doc.size().height() - thefuckyourshitup_constant),
+            width, 
+            height - thefuckyourshitup_constant
         )
 
 
@@ -113,6 +128,12 @@ class LabelListWidget(QtWidgets.QListView):
         self.setModel(StandardItemModel())
         self.model().setItemPrototype(LabelListWidgetItem())
         self.setItemDelegate(HTMLDelegate())
+
+        self.setWordWrap(False)
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.setResizeMode(QtWidgets.QListView.Fixed)
+
         self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
         self.setDefaultDropAction(Qt.MoveAction)
@@ -155,8 +176,24 @@ class LabelListWidget(QtWidgets.QListView):
     def addItem(self, item):
         if not isinstance(item, LabelListWidgetItem):
             raise TypeError("item must be LabelListWidgetItem")
+        
+        # 1. Добавляем элемент в модель
         self.model().setItem(self.model().rowCount(), 0, item)
-        item.setSizeHint(self.itemDelegate().sizeHint(None, None))
+        
+        # 2. Получаем корректный QModelIndex для только что добавленного элемента
+        index = self.model().indexFromItem(item)
+        
+        # 3. Создаем пустой QStyleOptionViewItem (это требуется для sizeHint)
+        option = QtWidgets.QStyleOptionViewItem()
+        # NOTE: Обычно QListView сам устанавливает правильную ширину в option.rect,
+        # но для ручного вызова мы можем использовать текущую ширину view
+        option.rect.setWidth(self.viewport().width()) 
+        
+        # 4. Вызываем sizeHint, передавая ему корректный индекс и опцию
+        size_hint = self.itemDelegate().sizeHint(option, index)
+        
+        # 5. Устанавливаем размер
+        item.setSizeHint(size_hint)
 
     def removeItem(self, item):
         index = self.model().indexFromItem(item)
