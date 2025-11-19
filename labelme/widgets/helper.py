@@ -49,6 +49,8 @@ class Helper(QtWidgets.QDialog):
 
         # 2. Создание и настройка QTextBrowser
         self.browser = QTextBrowser(self)
+
+        self.browser.setSource(QtCore.QUrl("qrc:///"))
         
         # Загружаем Markdown-текст
         self.browser.setMarkdown(markdown_text)
