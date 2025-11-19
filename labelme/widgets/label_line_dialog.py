@@ -76,7 +76,7 @@ class LabelLineDialog(QtWidgets.QDialog):
 
         # ОТКЛЮЧАЕМ СКРОЛЛЕРЫ
         self.text_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.text_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # self.text_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         # минимальные размеры (константы)
         self.text_view.setMinimumHeight(MIN_TEXTVIEW_HEIGHT)
