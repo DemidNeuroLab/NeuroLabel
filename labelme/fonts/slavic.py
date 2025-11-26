@@ -3,9 +3,10 @@ import labelme.fonts.font_rc
 from labelme.logger import logger
 
 class SlavicFont:
-    LETTERS = 'абвгдежзийклмнопрстуфхцчшщъыьэюяufimoptvwxzіµѕ ,.;:°'
-    DIACRITICAL_SIGNS = '1268'
-    TITLA = '57+=>?bcdg'
+    LETTERS = 'абвгдежзийклмнопрстуфхцчшщъыьэюяufimoptvwxzіµѕ'
+    DIACRITICAL_SIGNS = '1268='
+    PUNCTUATION = " ,.;:°" 
+    ALL = LETTERS + DIACRITICAL_SIGNS + PUNCTUATION
     
     __font_family = None
     

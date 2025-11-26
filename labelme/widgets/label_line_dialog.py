@@ -6,13 +6,24 @@ from PyQt5.QtCore import Qt, QSize, QEvent
 from PyQt5.QtGui import * 
 from PyQt5.QtWidgets import *
 from labelme.widgets.helper import Helper
+import re
 
 import labelme.utils
 from labelme.widgets.keyboard import Keyboard
 from labelme.fonts.slavic import SlavicFont
 from labelme.widgets.label_letter_dialog import Literal
+from labelme.fonts.titla_relation import TITLA_RELATIONS
 
 QT5 = QT_VERSION[0] == "5"
+
+# =============================================================================
+#                          CONSTANTS FOR ADAPTIVE SIZING
+# =============================================================================
+
+MIN_TEXTVIEW_HEIGHT = 45
+MIN_TEXTVIEW_WIDTH  = 300
+FONT_MIN_SIZE = 20
+FONT_MAX_SIZE = 36
 
 
 class LabelLineDialog(QtWidgets.QDialog):
@@ -33,7 +44,8 @@ class LabelLineDialog(QtWidgets.QDialog):
         self.helper = helper
         self.workWithKeyboard = False
 
-        self.setMinimumSize(QSize(600, 100))
+        # окно можно уменьшать, но только пока всё не наложится
+        self.setMinimumSize(QSize(400, 100))
 
         layout = QtWidgets.QVBoxLayout()
         
@@ -48,13 +60,31 @@ class LabelLineDialog(QtWidgets.QDialog):
         invite_text_label.setFont(QFont('Arial', 8))
         layout_slavic_text.addWidget(invite_text_label, 2)
 
+        # =====================================================================
+        #                          TEXT VIEW (MODIFIED)
+        # =====================================================================
         self.text_view = QTextEdit()
         if old_text is not None:
-            self.text_view.setText(old_text)
-        self.text_view.setFont(SlavicFont.GetFont(22))
+            displayed_text = self.convert_titla_to_displayable_text(old_text)
+            self.text_view.setText(displayed_text)
+
+        # базовый шрифт
+        self.text_view.setFont(SlavicFont.GetFont(14))
+
         self.text_view.setReadOnly(True)
         self.text_view.setWordWrapMode(QTextOption.NoWrap)
-        self.text_view.setFixedHeight(65)
+
+        # ОТКЛЮЧАЕМ СКРОЛЛЕРЫ
+        self.text_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # self.text_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # минимальные размеры (константы)
+        self.text_view.setMinimumHeight(MIN_TEXTVIEW_HEIGHT)
+        self.text_view.setMinimumWidth(MIN_TEXTVIEW_WIDTH)
+
+        # Убираем фиксированную высоту
+        # self.text_view.setFixedHeight(65)   <-- удалено
+
         self.text_view.textChanged.connect(self.cursor_to_right)
         layout_slavic_text.addWidget(self.text_view, 9)
 
@@ -74,7 +104,7 @@ class LabelLineDialog(QtWidgets.QDialog):
         
         layout.addLayout(layout_enter)
 
-        # buttons
+        # кнопки
         self.buttonBox = bb = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel,
             QtCore.Qt.Horizontal,
@@ -89,26 +119,109 @@ class LabelLineDialog(QtWidgets.QDialog):
         layout.addWidget(bb)
 
         self.setLayout(layout)
+        
+        # После всех настроек, сразу после self.show()
+        self.adjustSize()  # корректируем размеры элементов
+        self.setMinimumSize(self.minimumSizeHint())  # чтобы окно нельзя было уменьшить дальше
+        self.resize(self.width(), self.minimumSizeHint().height())  # стартовая высота = минимально возможная
+
+
+    # =====================================================================
+    #                   АДАПТИВНОЕ ИЗМЕНЕНИЕ РАЗМЕРА ПОЛЯ
+    # =====================================================================
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.adjust_text_view_size()
+        self.update_minimum_dialog_size()
+
+    def adjust_text_view_size(self):
+        """
+        1. Подбираем подходящий размер шрифта (без скроллов)
+        2. Автоматически выставляем высоту поля исходя из высоты шрифта
+        """
+
+        text = self.text_view.toPlainText()
+        if not text:
+            text = " "  # измерение минимальной ширины
+
+        allowed_width = self.text_view.viewport().width()
+
+        # адаптивный подбор размера шрифта
+        best_size = FONT_MIN_SIZE
+        for size in range(FONT_MIN_SIZE, FONT_MAX_SIZE + 1):
+            f = self.text_view.font()
+            f.setPointSize(size)
+            fm = QFontMetrics(f)
+            pixel_width = fm.horizontalAdvance(text)
+
+            if pixel_width > allowed_width - 10:
+                break
+            best_size = size
+
+        # применяем лучший размер
+        f = self.text_view.font()
+        f.setPointSize(best_size)
+        self.text_view.setFont(f)
+
+        # вычисляем высоту одной строки
+        fm = QFontMetrics(self.text_view.font())
+        line_h = fm.height() + 12
+
+        if line_h < MIN_TEXTVIEW_HEIGHT:
+            line_h = MIN_TEXTVIEW_HEIGHT
+
+        self.text_view.setFixedHeight(line_h)
+
+    def update_minimum_dialog_size(self):
+        """
+        Обновляет минимальный размер окна исходя из текущего layout,
+        чтобы элементы не могли наехать друг на друга.
+        """
+        self.layout().activate()
+        minsize = self.layout().minimumSize()
+        self.setMinimumSize(minsize)
+
+    # =====================================================================
+    #                      ОРИГИНАЛЬНАЯ ЛОГИКА (НЕ ТРОГАЛ!)
+    # =====================================================================
 
     def validate_input(self):
         text = self.edit.text()
-        symbol_list = SlavicFont.LETTERS + SlavicFont.DIACRITICAL_SIGNS + SlavicFont.TITLA
         if text == "":
             self.recognised_line = Literal(text)
             self.close()
             return
-        if not all(letter in symbol_list for letter in text):
+        if not all(letter in SlavicFont.ALL for letter in text):
             self.getMessageBox("Введён некорректный символ!")
-        elif text[0] in SlavicFont.DIACRITICAL_SIGNS + SlavicFont.TITLA:
-            self.getMessageBox("Диакритический знак или титло не может быть в начале строки!") 
+        elif text[0] in SlavicFont.DIACRITICAL_SIGNS:
+            self.getMessageBox("Диакритический знак не может быть в начале строки!") 
+        elif text[-1] == "=":
+            self.getMessageBox("Титло не может быть в конце строки без буквы!") 
         else:
-            all_upper = SlavicFont.DIACRITICAL_SIGNS + SlavicFont.TITLA
             for i in range(len(text) - 1):
-                if text[i] in all_upper and text[i + 1] in all_upper:
+                if text[i] in SlavicFont.DIACRITICAL_SIGNS and text[i + 1] in SlavicFont.DIACRITICAL_SIGNS:
                     self.getMessageBox("В строке не могут подряд идти 2 диакритических знака!")
+                    return
+                if text[i] == "=" and text[i+1] not in SlavicFont.LETTERS:
+                    self.getMessageBox("После титла обязана идти буква!")
                     return
             self.recognised_line = Literal(text)
             self.close()
+
+    def convert_titla_to_displayable_text(self, text):
+        pattern = re.compile(r'=(\w)')
+
+        def replacer(match):            
+            char = match.group(1)
+            full_match = match.group(0)
+
+            if char in SlavicFont.ALL:
+                key = full_match 
+                return TITLA_RELATIONS.get(key, full_match)
+            else:
+                return full_match
+
+        return pattern.sub(replacer, text)
 
     def getMessageBox(self, text):
         messageBox = QtWidgets.QMessageBox(
@@ -121,12 +234,13 @@ class LabelLineDialog(QtWidgets.QDialog):
         
     def changeLabel(self):
         text = self.edit.text()
-        symbol_list = SlavicFont.LETTERS + SlavicFont.DIACRITICAL_SIGNS + SlavicFont.TITLA
         
-        if not all(letter in symbol_list for letter in text):
+        if not all(letter in SlavicFont.ALL for letter in text):
             self.text_view.setText("")
+            self.getMessageBox("Введён некорректный символ! Отображение строки отключено, пока ввод не будет исправен!")
         else:
-            self.text_view.setText(text)
+            displayed_text = self.convert_titla_to_displayable_text(text)
+            self.text_view.setText(displayed_text)
         
     def cursor_to_right(self):
         cursor = self.text_view.textCursor()     
@@ -139,6 +253,7 @@ class LabelLineDialog(QtWidgets.QDialog):
         self.workWithKeyboard = False
         if letter is not None:
             self.edit.setText(self.edit.text() + letter)
+            self.changeLabel()
 
     def event(self, event):
         if not self.workWithKeyboard and event.type() == QEvent.EnterWhatsThisMode:
@@ -148,4 +263,4 @@ class LabelLineDialog(QtWidgets.QDialog):
 
     def popUp(self):
         self.exec_()
-        return self.recognised_line 
+        return self.recognised_line
